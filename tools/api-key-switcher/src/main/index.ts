@@ -7,7 +7,7 @@ import {
   nativeImage,
   dialog,
   NativeImage,
-} from 'electron';
+} from 'electron'; 
 import * as path from 'path';
 import {
   loadConfig,
