@@ -2,6 +2,10 @@
 
 一个用于管理和切换多个 AI 服务商 API Key 的桌面工具。
 
+## 截图
+
+![应用截图](assets/screenshot.png)
+
 ## 功能特性
 
 - 支持多个 AI 服务商 (Claude, OpenAI, Gemini, DeepSeek)
