@@ -69,7 +69,7 @@ const App: React.FC = () => {
       const response = await window.electronAPI.addKey(selectedProvider, key, alias, baseUrl);
       if (response.success) {
         await loadConfig();
-        await loadActualEnvStatus(selectedProvider);
+        // 添加后不需要重新读取环境变量状态
         setShowAddModal(false);
       } else {
         alert(response.error || '添加失败');
@@ -89,7 +89,14 @@ const App: React.FC = () => {
       const response = await window.electronAPI.removeKey(selectedProvider, alias);
       if (response.success) {
         await loadConfig();
-        await loadActualEnvStatus(selectedProvider);
+        // 如果删除的是当前使用的 key，清除状态
+        if (actualEnvStatus?.matchedAlias === alias) {
+          setActualEnvStatus({
+            envValue: null,
+            matchedAlias: null,
+            isManuallyModified: false,
+          });
+        }
       } else {
         alert(response.error || '删除失败');
       }
@@ -104,6 +111,7 @@ const App: React.FC = () => {
       const response = await window.electronAPI.switchKey(selectedProvider, alias);
       if (response.success) {
         await loadConfig();
+        // 切换成功后读取实际环境变量验证
         await loadActualEnvStatus(selectedProvider);
       } else {
         alert(response.error || '切换失败');
@@ -121,6 +129,20 @@ const App: React.FC = () => {
         await loadConfig();
       } else {
         alert(response.error || '操作失败');
+      }
+    } catch (err) {
+      alert((err as Error).message);
+    }
+  };
+
+  // 处理重排序
+  const handleReorderKeys = async (aliases: string[]) => {
+    try {
+      const response = await window.electronAPI.reorderKeys(selectedProvider, aliases);
+      if (response.success) {
+        await loadConfig();
+      } else {
+        alert(response.error || '排序失败');
       }
     } catch (err) {
       alert((err as Error).message);
@@ -219,6 +241,7 @@ const App: React.FC = () => {
             onRemoveKey={handleRemoveKey}
             onSwitchKey={handleSwitchKey}
             onToggleKey={handleToggleKey}
+            onReorderKeys={handleReorderKeys}
           />
         )}
       </div>

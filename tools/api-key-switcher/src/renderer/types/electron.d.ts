@@ -25,6 +25,10 @@ export interface ElectronAPI {
     alias: string
   ) => Promise<IpcResponse<{ enabled: boolean }>>;
   switchKey: (provider: ProviderType, alias: string) => Promise<IpcResponse>;
+  reorderKeys: (
+    provider: ProviderType,
+    aliases: string[]
+  ) => Promise<IpcResponse<ApiKey[]>>;
 
   // 环境变量
   getCurrentEnv: (

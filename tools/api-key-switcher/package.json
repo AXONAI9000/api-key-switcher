@@ -45,9 +45,13 @@
     "vite": "^5.0.10"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "commander": "^11.1.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "regedit": "^5.1.4"
   },
   "build": {
     "appId": "com.api-key-switcher.app",

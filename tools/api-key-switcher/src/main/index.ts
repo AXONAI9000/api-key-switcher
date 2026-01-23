@@ -22,6 +22,7 @@ import {
   addKeyWithExtras,
   switchKeyAndApply,
   getUserEnvVar,
+  reorderKeys,
 } from '../shared/config-manager';
 import {
   IPC_CHANNELS,
@@ -302,6 +303,20 @@ function setupIpcHandlers(): void {
         const result = switchKeyAndApply(provider, alias);
         updateTrayMenu();
         return { success: true, data: { appliedVars: result.appliedVars } };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 重新排序 Keys
+  ipcMain.handle(
+    IPC_CHANNELS.REORDER_KEYS,
+    (_, provider: ProviderType, aliases: string[]): IpcResponse<ApiKey[]> => {
+      try {
+        const reorderedKeys = reorderKeys(provider, aliases);
+        updateTrayMenu();
+        return { success: true, data: reorderedKeys };
       } catch (error) {
         return { success: false, error: (error as Error).message };
       }

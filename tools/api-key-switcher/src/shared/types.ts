@@ -81,6 +81,7 @@ export const IPC_CHANNELS = {
   UPDATE_KEY: 'key:update',
   TOGGLE_KEY: 'key:toggle',
   SWITCH_KEY: 'key:switch',
+  REORDER_KEYS: 'key:reorder',
 
   // 环境变量
   SET_ENV_VAR: 'env:set',

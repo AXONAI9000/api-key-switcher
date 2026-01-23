@@ -11,6 +11,7 @@ const IPC_CHANNELS = {
   UPDATE_KEY: 'key:update',
   TOGGLE_KEY: 'key:toggle',
   SWITCH_KEY: 'key:switch',
+  REORDER_KEYS: 'key:reorder',
   SET_ENV_VAR: 'env:set',
   GET_CURRENT_ENV: 'env:get-current',
   GET_ACTUAL_ENV: 'env:get-actual',
@@ -38,6 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.TOGGLE_KEY, provider, alias),
   switchKey: (provider: string, alias: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.SWITCH_KEY, provider, alias),
+  reorderKeys: (provider: string, aliases: string[]) =>
+    ipcRenderer.invoke(IPC_CHANNELS.REORDER_KEYS, provider, aliases),
 
   // 环境变量
   getCurrentEnv: (provider: string) =>

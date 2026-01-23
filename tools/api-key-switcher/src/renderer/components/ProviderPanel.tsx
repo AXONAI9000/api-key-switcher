@@ -1,4 +1,18 @@
 import React from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { ProviderType, ProviderConfig, ProviderInfo, ActualEnvStatus } from '../../shared/types';
 import KeyCard from './KeyCard';
 
@@ -11,6 +25,7 @@ interface ProviderPanelProps {
   onRemoveKey: (alias: string) => void;
   onSwitchKey: (alias: string) => void;
   onToggleKey: (alias: string) => void;
+  onReorderKeys: (aliases: string[]) => void;
 }
 
 const ProviderPanel: React.FC<ProviderPanelProps> = ({
@@ -22,12 +37,42 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
   onRemoveKey,
   onSwitchKey,
   onToggleKey,
+  onReorderKeys,
 }) => {
   const { keys, envVar } = providerConfig;
 
   // 根据实际环境变量状态判断当前使用的 key
   const actualCurrentKey = actualEnvStatus?.matchedAlias || null;
   const isManuallyModified = actualEnvStatus?.isManuallyModified || false;
+
+  // 拖拽传感器配置
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // 处理拖拽结束
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = keys.findIndex((k) => k.alias === active.id);
+      const newIndex = keys.findIndex((k) => k.alias === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newKeys = [...keys];
+        const [movedItem] = newKeys.splice(oldIndex, 1);
+        newKeys.splice(newIndex, 0, movedItem);
+        onReorderKeys(newKeys.map((k) => k.alias));
+      }
+    }
+  };
 
   return (
     <div className="card">
@@ -120,18 +165,29 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {keys.map((key) => (
-            <KeyCard
-              key={key.alias}
-              apiKey={key}
-              isCurrent={actualCurrentKey === key.alias && !isManuallyModified}
-              onSwitch={() => onSwitchKey(key.alias)}
-              onToggle={() => onToggleKey(key.alias)}
-              onRemove={() => onRemoveKey(key.alias)}
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={keys.map((k) => k.alias)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {keys.map((key) => (
+                <KeyCard
+                  key={key.alias}
+                  apiKey={key}
+                  isCurrent={actualCurrentKey === key.alias && !isManuallyModified}
+                  onSwitch={() => onSwitchKey(key.alias)}
+                  onToggle={() => onToggleKey(key.alias)}
+                  onRemove={() => onRemoveKey(key.alias)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* 使用提示 */}

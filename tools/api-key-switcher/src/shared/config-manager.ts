@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import {
   AppConfig,
   ApiKey,
@@ -56,7 +56,6 @@ export function loadConfig(): AppConfig {
     const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
     const config = JSON.parse(content) as AppConfig;
 
-    // 确保所有默认服务商都存在
     for (const [id, info] of Object.entries(DEFAULT_PROVIDERS)) {
       if (!config.providers[id as ProviderType]) {
         config.providers[id as ProviderType] = {
@@ -80,6 +79,7 @@ export function saveConfig(config: AppConfig): void {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 
+
 // 添加 Key
 export function addKey(
   provider: ProviderType,
@@ -92,11 +92,9 @@ export function addKey(
     throw new Error(`Unknown provider: ${provider}`);
   }
 
-  // 生成默认别名
   const finalAlias =
     alias || `key-${config.providers[provider].keys.length + 1}`;
 
-  // 检查别名是否已存在
   const existingKey = config.providers[provider].keys.find(
     (k) => k.alias === finalAlias
   );
@@ -113,7 +111,6 @@ export function addKey(
 
   config.providers[provider].keys.push(newKey);
 
-  // 如果是第一个 Key，自动设为当前
   if (config.providers[provider].keys.length === 1) {
     config.providers[provider].currentKey = finalAlias;
   }
@@ -139,7 +136,6 @@ export function removeKey(provider: ProviderType, alias: string): boolean {
 
   config.providers[provider].keys.splice(index, 1);
 
-  // 如果删除的是当前 Key，切换到第一个可用的
   if (config.providers[provider].currentKey === alias) {
     const firstEnabled = config.providers[provider].keys.find((k) => k.enabled);
     config.providers[provider].currentKey = firstEnabled?.alias || null;
@@ -168,7 +164,6 @@ export function updateKey(
     throw new Error(`Key with alias "${alias}" not found`);
   }
 
-  // 如果更新别名，检查新别名是否已存在
   if (updates.alias && updates.alias !== alias) {
     const existingKey = config.providers[provider].keys.find(
       (k) => k.alias === updates.alias
@@ -177,7 +172,6 @@ export function updateKey(
       throw new Error(`Key with alias "${updates.alias}" already exists`);
     }
 
-    // 更新 currentKey 引用
     if (config.providers[provider].currentKey === alias) {
       config.providers[provider].currentKey = updates.alias;
     }
@@ -214,7 +208,6 @@ export function toggleKey(
   key.enabled = !key.enabled;
   key.updatedAt = new Date().toISOString();
 
-  // 如果禁用当前 Key，切换到其他可用的
   if (!key.enabled && config.providers[provider].currentKey === alias) {
     const firstEnabled = config.providers[provider].keys.find(
       (k) => k.enabled && k.alias !== alias
@@ -295,19 +288,16 @@ export function importConfig(filePath: string): AppConfig {
   const content = fs.readFileSync(filePath, 'utf-8');
   const importedConfig = JSON.parse(content) as AppConfig;
 
-  // 验证配置格式
   if (!importedConfig.version || !importedConfig.providers) {
     throw new Error('Invalid config format');
   }
 
-  // 合并到现有配置
   const currentConfig = loadConfig();
 
   for (const [provider, providerConfig] of Object.entries(
     importedConfig.providers
   )) {
     if (currentConfig.providers[provider as ProviderType]) {
-      // 合并 keys，避免重复
       for (const key of providerConfig.keys) {
         const existing = currentConfig.providers[
           provider as ProviderType
@@ -339,24 +329,38 @@ export function maskKey(key: string): string {
   return key.substring(0, 4) + '****' + key.substring(key.length - 4);
 }
 
+
 // 设置 Windows 用户级环境变量（单个）
 export function setUserEnvVar(name: string, value: string): void {
   setUserEnvVarsBatch({ [name]: value });
 }
 
-// 批量设置 Windows 用户级环境变量（只启动一次 PowerShell）
+// 广播环境变量变更（通知其他应用）
+function broadcastEnvChange(): void {
+  if (process.platform === 'win32') {
+    // 使用 setx 设置一个临时变量来触发广播，异步执行不阻塞
+    const child = spawn('setx', ['__DUMMY__', '1'], {
+      stdio: 'ignore',
+      detached: true,
+      windowsHide: true,
+    });
+    child.unref();
+  }
+}
+
+// 批量设置 Windows 用户级环境变量（使用 reg 命令，比 PowerShell 快很多）
 export function setUserEnvVarsBatch(vars: Record<string, string>): void {
   const entries = Object.entries(vars);
   if (entries.length === 0) return;
 
   if (process.platform === 'win32') {
-    // 构建批量设置命令，只启动一次 PowerShell
-    const commands = entries.map(([name, value]) => {
-      const escapedValue = value.replace(/"/g, '`"');
-      return `[System.Environment]::SetEnvironmentVariable('${name}', '${escapedValue}', 'User')`;
-    });
-    const command = `powershell -Command "${commands.join('; ')}"`;
-    execSync(command, { stdio: 'pipe' });
+    // 使用 reg add 命令直接写注册表，比 PowerShell 快很多
+    for (const [name, value] of entries) {
+      const command = `reg add "HKCU\\Environment" /v "${name}" /t REG_SZ /d "${value}" /f`;
+      execSync(command, { stdio: 'pipe', windowsHide: true });
+    }
+    // 广播环境变量变更消息
+    broadcastEnvChange();
   } else {
     // Unix 系统：写入 shell 配置文件
     const shellConfig = path.join(os.homedir(), '.bashrc');
@@ -385,19 +389,22 @@ export function setUserEnvVarsBatch(vars: Record<string, string>): void {
   }
 }
 
-// 读取实际的系统用户级环境变量
+// 读取实际的系统用户级环境变量（使用 reg query，比 PowerShell 快）
 export function getUserEnvVar(name: string): string | null {
   if (process.platform === 'win32') {
     try {
-      const command = `powershell -Command "[System.Environment]::GetEnvironmentVariable('${name}', 'User')"`;
-      const result = execSync(command, { stdio: 'pipe', encoding: 'utf-8' });
-      const value = result.trim();
-      return value || null;
+      const command = `reg query "HKCU\\Environment" /v "${name}"`;
+      const result = execSync(command, { stdio: 'pipe', encoding: 'utf-8', windowsHide: true });
+      // 解析 reg query 输出格式: "    NAME    REG_SZ    VALUE"
+      const match = result.match(/REG_(?:SZ|EXPAND_SZ)\s+(.+)/);
+      if (match) {
+        return match[1].trim() || null;
+      }
+      return null;
     } catch {
       return null;
     }
   } else {
-    // Unix: 从环境变量读取
     return process.env[name] || null;
   }
 }
@@ -408,35 +415,8 @@ export function getUserEnvVarsBatch(names: string[]): Record<string, string | nu
 
   if (names.length === 0) return result;
 
-  if (process.platform === 'win32') {
-    try {
-      // 构建批量读取命令
-      const commands = names.map(name =>
-        `Write-Output "${name}=$([System.Environment]::GetEnvironmentVariable('${name}', 'User'))"`
-      );
-      const command = `powershell -Command "${commands.join('; ')}"`;
-      const output = execSync(command, { stdio: 'pipe', encoding: 'utf-8' });
-
-      // 解析输出
-      const lines = output.trim().split('\n');
-      for (const line of lines) {
-        const eqIndex = line.indexOf('=');
-        if (eqIndex > 0) {
-          const name = line.substring(0, eqIndex).trim();
-          const value = line.substring(eqIndex + 1).trim();
-          result[name] = value || null;
-        }
-      }
-    } catch {
-      // 出错时返回空结果
-      for (const name of names) {
-        result[name] = null;
-      }
-    }
-  } else {
-    for (const name of names) {
-      result[name] = process.env[name] || null;
-    }
+  for (const name of names) {
+    result[name] = getUserEnvVar(name);
   }
 
   return result;
@@ -445,11 +425,16 @@ export function getUserEnvVarsBatch(names: string[]): Record<string, string | nu
 // 删除用户级环境变量
 export function removeUserEnvVar(name: string): void {
   if (process.platform === 'win32') {
-    const command = `powershell -Command "[System.Environment]::SetEnvironmentVariable('${name}', $null, 'User')"`;
-    execSync(command, { stdio: 'pipe' });
+    try {
+      const command = `reg delete "HKCU\\Environment" /v "${name}" /f`;
+      execSync(command, { stdio: 'pipe', windowsHide: true });
+    } catch {
+      // 忽略删除不存在的变量的错误
+    }
   }
   delete process.env[name];
 }
+
 
 // 切换 Key 并自动应用环境变量
 export function switchKeyAndApply(provider: ProviderType, alias: string): {
@@ -489,7 +474,7 @@ export function switchKeyAndApply(provider: ProviderType, alias: string): {
     }
   }
 
-  // 批量设置所有环境变量（只启动一次 PowerShell）
+  // 批量设置所有环境变量
   setUserEnvVarsBatch(appliedVars);
 
   return { success: true, appliedVars };
@@ -545,4 +530,34 @@ export function getFullKeyInfo(provider: ProviderType, alias: string): ApiKey | 
   }
 
   return config.providers[provider].keys.find((k) => k.alias === alias) || null;
+}
+
+// 重新排序 Keys
+export function reorderKeys(provider: ProviderType, aliases: string[]): ApiKey[] {
+  const config = loadConfig();
+
+  if (!config.providers[provider]) {
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+
+  const currentKeys = config.providers[provider].keys;
+  
+  for (const alias of aliases) {
+    if (!currentKeys.find(k => k.alias === alias)) {
+      throw new Error(`Key with alias "${alias}" not found`);
+    }
+  }
+
+  const reorderedKeys: ApiKey[] = [];
+  for (const alias of aliases) {
+    const key = currentKeys.find(k => k.alias === alias);
+    if (key) {
+      reorderedKeys.push(key);
+    }
+  }
+
+  config.providers[provider].keys = reorderedKeys;
+  saveConfig(config);
+
+  return reorderedKeys;
 }
