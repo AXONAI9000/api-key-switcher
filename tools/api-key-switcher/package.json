@@ -75,7 +75,7 @@
     "win": {
       "target": "portable",
       "icon": "assets/icon.ico",
-      "artifactName": "${productName}-${version}.${ext}"
+      "artifactName": "API-Key-Switcher.${ext}"
     },
     "mac": {
       "target": "dmg",
