@@ -1,12 +1,16 @@
-name: Build and Release
+name: Build API Key Switcher
 
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'tools/api-key-switcher/**'
     tags:
-      - 'v*'
+      - 'api-key-switcher-v*'
   pull_request:
     branches: [main, master]
+    paths:
+      - 'tools/api-key-switcher/**'
 
 permissions:
   contents: write
@@ -14,7 +18,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    
+
     defaults:
       run:
         working-directory: tools/api-key-switcher
@@ -45,13 +49,12 @@ jobs:
           name: API-Key-Switcher-Windows
           path: tools/api-key-switcher/release/*.exe
 
-      # 每次推送到 main 都更新 latest release
       - name: Update Latest Release
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: latest
-          name: Latest Build
+          tag_name: api-key-switcher-latest
+          name: API Key Switcher - Latest Build
           body: |
             自动构建的最新版本
             构建时间: ${{ github.event.head_commit.timestamp }}
@@ -62,9 +65,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 当推送 tag 时创建正式 Release
       - name: Create Version Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/api-key-switcher-v')
         uses: softprops/action-gh-release@v1
         with:
           files: tools/api-key-switcher/release/*.exe
