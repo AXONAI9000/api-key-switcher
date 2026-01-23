@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(dotnet new:*)",
+      "Skill(bmad:bmm:workflows:prd)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\Administrator\\\\.claude\")",
+      "Bash(findstr:*)",
+      "Bash(dir /b)",
+      "Bash(npm install)",
+      "Bash(npm run build:main:*)",
+      "Bash(npm run build:cli:*)",
+      "Bash(npm run build:renderer:*)",
+      "Bash(node dist/cli/cli/index.js:*)",
+      "Bash(timeout 5 npm start)",
+      "Bash(npm run build:*)",
+      "Bash(powershell -Command \"[System.Environment]::GetEnvironmentVariable\\(''ANTHROPIC_API_KEY'', ''User''\\)\")",
+      "Bash(powershell:*)",
+      "Bash(node -e:*)"
     ]
   }
 }

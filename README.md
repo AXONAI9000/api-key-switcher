@@ -15,7 +15,7 @@ AI9000/
 
 | 工具名 | 描述 | 语言 | 日期 |
 |--------|------|------|------|
-| - | - | - | - |
+| [claude-key-switcher](tools/claude-key-switcher) | 可视化切换Claude API配置 | C# WPF | 2026-01-22 |
 
 ## 添加新工具
 

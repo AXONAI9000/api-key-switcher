@@ -1,0 +1,5 @@
+# 此目录用于存放图标资源
+# - icon.png: 应用图标 (256x256 或更大)
+# - icon.ico: Windows 图标
+# - icon.icns: macOS 图标
+# - tray-icon.png: 托盘图标 (16x16 或 32x32)
