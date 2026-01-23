@@ -40,6 +40,15 @@ let isQuitting = false;
 
 const isDev = process.env.NODE_ENV === 'development';
 
+// 获取资源路径（兼容开发和打包环境）
+function getAssetPath(filename: string): string {
+  if (isDev) {
+    return path.join(__dirname, '../../../assets', filename);
+  }
+  // 打包后资源在 app.asar 同级的 assets 目录或 resources 目录
+  return path.join(process.resourcesPath, 'assets', filename);
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 900,
@@ -51,18 +60,17 @@ function createWindow(): void {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
-    icon: path.join(__dirname, '../../../assets/icon.png'),
+    icon: getAssetPath('icon.png'),
     show: false,
   });
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-  }  else {
+    // 仅在开发模式下打开开发者工具
+    mainWindow.webContents.openDevTools();
+  } else {
     mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
   }
-
-  // 打开开发者工具用于调试
-  mainWindow.webContents.openDevTools();
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
@@ -82,7 +90,7 @@ function createWindow(): void {
 
 function createTrayIcon(): NativeImage {
   // 加载托盘图标
-  const iconPath = path.join(__dirname, '../../../assets/tray-icon.png');
+  const iconPath = getAssetPath('tray-icon.png');
   let trayIcon = nativeImage.createFromPath(iconPath);
 
   // 如果图标加载失败，创建一个简单的后备图标
