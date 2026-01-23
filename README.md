@@ -4,9 +4,9 @@
 
 ## 工具列表
 
-| 工具 | 描述 | 技术栈 |
-|------|------|--------|
-| [api-key-switcher](tools/api-key-switcher) | 多 AI 服务商 API Key 管理与切换 | Electron + React |
+| 工具 | 描述 | 技术栈 | 下载 |
+|------|------|--------|------|
+| [api-key-switcher](tools/api-key-switcher) | 多 AI 服务商 API Key 管理与切换 | Electron + React | [Windows exe](https://github.com/AXONAI9000/AI9000/releases/download/latest/API-Key-Switcher-1.0.0.exe) |
 
 ## 添加新工具
 

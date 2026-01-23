@@ -74,7 +74,8 @@
     ],
     "win": {
       "target": "portable",
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}.${ext}"
     },
     "mac": {
       "target": "dmg",
