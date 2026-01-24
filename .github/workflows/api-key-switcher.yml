@@ -2,13 +2,13 @@ name: Build API Key Switcher
 
 on:
   push:
-    branches: [main, master]
+    branches: [master]
     paths:
       - 'tools/api-key-switcher/**'
     tags:
-      - 'api-key-switcher-v*'
+      - 'v*.*.*'
   pull_request:
-    branches: [main, master]
+    branches: [master]
     paths:
       - 'tools/api-key-switcher/**'
 
@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -43,22 +45,43 @@ jobs:
       - name: Package application
         run: npm run package
 
+      - name: Get version info
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            COMMIT_SHORT=$(git rev-parse --short HEAD)
+            echo "version=$VERSION-dev.$COMMIT_SHORT" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: API-Key-Switcher-Windows
+          name: API-Key-Switcher-Windows-${{ steps.version.outputs.version }}
           path: tools/api-key-switcher/release/*.exe
 
-      - name: Update Latest Release
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      - name: Update Latest Release (Dev Build)
+        if: github.ref == 'refs/heads/master' && steps.version.outputs.is_release == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: api-key-switcher-latest
-          name: API Key Switcher - Latest Build
+          tag_name: latest
+          name: API Key Switcher - Latest Build (Dev)
           body: |
-            自动构建的最新版本
-            构建时间: ${{ github.event.head_commit.timestamp }}
-            提交: ${{ github.sha }}
+            🚧 **开发版本 - 自动构建**
+            
+            这是最新的开发版本，可能不稳定。如需稳定版本，请查看正式发布版本。
+            
+            **版本信息：**
+            - 版本号: ${{ steps.version.outputs.version }}
+            - 构建时间: ${{ github.event.head_commit.timestamp }}
+            - 提交: ${{ github.sha }}
+            - 提交信息: ${{ github.event.head_commit.message }}
           files: tools/api-key-switcher/release/*.exe
           draft: false
           prerelease: true
@@ -66,9 +89,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Version Release
-        if: startsWith(github.ref, 'refs/tags/api-key-switcher-v')
+        if: startsWith(github.ref, 'refs/tags/v') && steps.version.outputs.is_release == 'true'
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ github.ref_name }}
+          name: API Key Switcher v${{ steps.version.outputs.version }}
+          body: |
+            ## 🎉 API Key Switcher v${{ steps.version.outputs.version }}
+            
+            ### 📦 下载
+            请下载下方的 `API-Key-Switcher.exe` 文件
+            
+            ### 📝 更新内容
+            请在此处添加版本更新说明
+            
+            ### 🔗 相关链接
+            - [完整更新日志](https://github.com/${{ github.repository }}/releases)
+            - [问题反馈](https://github.com/${{ github.repository }}/issues)
           files: tools/api-key-switcher/release/*.exe
           draft: false
           prerelease: false
