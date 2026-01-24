@@ -77,10 +77,10 @@ const KeyCard: React.FC<KeyCardProps> = ({
       style={style}
       className={`p-4 rounded-lg border-2 transition-all duration-200 ${
         isCurrent
-          ? 'border-green-400 bg-green-50'
+          ? 'border-green-400 bg-green-50 dark:bg-green-900/20 dark:border-green-600'
           : enabled
-          ? 'border-slate-200 bg-white hover:border-slate-300'
-          : 'border-slate-100 bg-slate-50 opacity-60'
+          ? 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500'
+          : 'border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 opacity-60'
       } ${isDragging ? 'shadow-lg z-50' : ''} ${isLoading ? 'pointer-events-none' : ''}`}
     >
       <div className="flex items-center justify-between">
@@ -88,7 +88,7 @@ const KeyCard: React.FC<KeyCardProps> = ({
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-2 -ml-2 mr-2 text-slate-400 hover:text-slate-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="cursor-grab active:cursor-grabbing p-2 -ml-2 mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 min-w-[44px] min-h-[44px] flex items-center justify-center"
           title="拖拽排序"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +103,7 @@ const KeyCard: React.FC<KeyCardProps> = ({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <h3 className="font-medium text-slate-800 truncate">{alias}</h3>
+            <h3 className="font-medium text-slate-800 dark:text-slate-100 truncate">{alias}</h3>
             {isCurrent && (
               <span className="badge badge-success">当前</span>
             )}
@@ -117,7 +117,7 @@ const KeyCard: React.FC<KeyCardProps> = ({
             </code>
             <button
               onClick={() => setShowKey(!showKey)}
-              className="text-slate-400 hover:text-slate-600 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               title={showKey ? '隐藏 Key' : '显示 Key'}
             >
               {showKey ? (
@@ -150,8 +150,8 @@ const KeyCard: React.FC<KeyCardProps> = ({
               onClick={handleCopy}
               className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md transition-colors ${
                 copied
-                  ? 'text-green-500 bg-green-50'
-                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                  ? 'text-green-500 bg-green-50 dark:bg-green-900/30'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
               title={copied ? '已复制' : '复制 Key'}
             >
@@ -171,7 +171,7 @@ const KeyCard: React.FC<KeyCardProps> = ({
               )}
             </button>
           </div>
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
             添加于: {new Date(createdAt).toLocaleDateString('zh-CN')}
           </p>
         </div>
@@ -202,7 +202,7 @@ const KeyCard: React.FC<KeyCardProps> = ({
           <button
             onClick={onRemove}
             disabled={isLoading}
-            className="btn btn-ghost text-red-500 hover:bg-red-50 py-1.5 px-3 text-sm min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="btn btn-ghost text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 py-1.5 px-3 text-sm min-w-[44px] min-h-[44px] flex items-center justify-center"
             title="删除"
           >
             {isRemoving ? (

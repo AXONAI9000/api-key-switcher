@@ -116,20 +116,20 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
     >
       <div
         ref={modalRef}
-        className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
         {/* 头部 */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100">
             添加 {providerInfo.name} Key
           </h2>
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="text-slate-400 hover:text-slate-600 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors disabled:opacity-50"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -147,7 +147,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
           <div className="space-y-4">
             {/* API Key 输入 */}
             <div>
-              <label htmlFor="api-key" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="api-key" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 API Key <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -169,7 +169,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center"
                   tabIndex={-1}
                 >
                   {showKey ? (
@@ -204,7 +204,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                   {error}
                 </p>
               ) : (
-                <p id="key-hint" className="text-xs text-slate-500 mt-1">
+                <p id="key-hint" className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Key 将存储在本地配置文件中
                 </p>
               )}
@@ -212,7 +212,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
 
             {/* Base URL 输入 */}
             <div>
-              <label htmlFor="base-url" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="base-url" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 API Base URL (可选)
               </label>
               <input
@@ -224,14 +224,14 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                 className="input"
                 disabled={isLoading}
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 用于代理服务，留空则使用官方默认地址
               </p>
             </div>
 
             {/* 别名输入 */}
             <div>
-              <label htmlFor="alias" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="alias" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 别名 (可选)
               </label>
               <input
@@ -243,14 +243,14 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                 className="input"
                 disabled={isLoading}
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 用于标识和区分不同的 Key，留空将自动生成
               </p>
             </div>
           </div>
 
           {/* 提示信息 */}
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
             <div className="flex items-start space-x-2">
               <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -260,13 +260,13 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <div className="text-sm text-blue-700">
+              <div className="text-sm text-blue-700 dark:text-blue-300">
                 <p>切换时将自动设置环境变量:</p>
-                <code className="font-mono text-xs bg-blue-100 px-1 py-0.5 rounded block mt-1">
+                <code className="font-mono text-xs bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded block mt-1">
                   {providerInfo.envVar}
                 </code>
                 {baseUrl && baseUrlEnvName && (
-                  <code className="font-mono text-xs bg-blue-100 px-1 py-0.5 rounded block mt-1">
+                  <code className="font-mono text-xs bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded block mt-1">
                     {baseUrlEnvName}
                   </code>
                 )}

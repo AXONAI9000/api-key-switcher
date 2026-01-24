@@ -6,6 +6,7 @@ import Header from './components/Header';
 import StatusBar from './components/StatusBar';
 import { ToastProvider, useToast } from './components/Toast';
 import ConfirmModal from './components/ConfirmModal';
+import { ThemeProvider } from './components/ThemeContext';
 
 // Provider icons
 const PROVIDER_ICONS: Record<ProviderType, React.ReactNode> = {
@@ -257,15 +258,15 @@ const AppContent: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-slate-500">加载中...</div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="text-lg text-slate-500 dark:text-slate-400">加载中...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
         <div className="text-center">
           <div className="text-lg text-red-500 mb-4">加载失败: {error}</div>
           <button onClick={loadConfig} className="btn btn-primary">
@@ -277,7 +278,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-14">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-14 transition-colors duration-200">
       <Header
         onExport={handleExport}
         onImport={handleImport}
@@ -286,7 +287,7 @@ const AppContent: React.FC = () => {
 
       <div className="container mx-auto px-4 py-6">
         {/* 服务商标签页 */}
-        <div className="flex space-x-1 mb-6 bg-white rounded-lg p-1 shadow-sm border border-slate-200">
+        <div className="flex space-x-1 mb-6 bg-white dark:bg-slate-800 rounded-lg p-1 shadow-sm border border-slate-200 dark:border-slate-700 transition-colors duration-200">
           {Object.entries(DEFAULT_PROVIDERS).map(([id, info]) => (
             <button
               key={id}
@@ -294,7 +295,7 @@ const AppContent: React.FC = () => {
               className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
                 selectedProvider === id
                   ? 'bg-primary-500 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
             >
               {PROVIDER_ICONS[id as ProviderType]}
@@ -355,12 +356,14 @@ const AppContent: React.FC = () => {
   );
 };
 
-// Wrap with ToastProvider
+// Wrap with ToastProvider and ThemeProvider
 const App: React.FC = () => {
   return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </ThemeProvider>
   );
 };
 

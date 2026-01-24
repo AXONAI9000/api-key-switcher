@@ -64,7 +64,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       onClick={onCancel}
     >
       <div
-        className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 overflow-hidden"
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -90,15 +90,15 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               )}
             </div>
             <div className="flex-1">
-              <h3 id="confirm-title" className="text-lg font-semibold text-slate-800">
+              <h3 id="confirm-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100">
                 {title}
               </h3>
-              <p className="mt-2 text-sm text-slate-600">{message}</p>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{message}</p>
             </div>
           </div>
         </div>
 
-        <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-700/50 flex justify-end gap-3">
           <button
             ref={cancelButtonRef}
             onClick={onCancel}

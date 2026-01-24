@@ -22,6 +22,14 @@ body {
   background-color: #f8fafc;
   color: #1e293b;
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body,
+body.dark,
+:root.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
 }
 
 #root {
@@ -38,13 +46,25 @@ body {
   background: #f1f5f9;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* 按钮基础样式 */
@@ -60,6 +80,10 @@ body {
   @apply bg-slate-200 text-slate-700 hover:bg-slate-300 focus:ring-slate-400;
 }
 
+.dark .btn-secondary {
+  @apply bg-slate-700 text-slate-200 hover:bg-slate-600 focus:ring-slate-500;
+}
+
 .btn-danger {
   @apply bg-red-500 text-white hover:bg-red-600 focus:ring-red-500;
 }
@@ -68,14 +92,26 @@ body {
   @apply bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-400;
 }
 
+.dark .btn-ghost {
+  @apply text-slate-300 hover:bg-slate-700;
+}
+
 /* 输入框基础样式 */
 .input {
   @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
 }
 
+.dark .input {
+  @apply bg-slate-800 border-slate-600 text-slate-200 placeholder-slate-400;
+}
+
 /* 卡片样式 */
 .card {
   @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6;
+}
+
+.dark .card {
+  @apply bg-slate-800 border-slate-700;
 }
 
 /* 标签样式 */
@@ -87,21 +123,41 @@ body {
   @apply bg-green-100 text-green-800;
 }
 
+.dark .badge-success {
+  @apply bg-green-900 text-green-200;
+}
+
 .badge-warning {
   @apply bg-yellow-100 text-yellow-800;
+}
+
+.dark .badge-warning {
+  @apply bg-yellow-900 text-yellow-200;
 }
 
 .badge-danger {
   @apply bg-red-100 text-red-800;
 }
 
+.dark .badge-danger {
+  @apply bg-red-900 text-red-200;
+}
+
 .badge-info {
   @apply bg-blue-100 text-blue-800;
+}
+
+.dark .badge-info {
+  @apply bg-blue-900 text-blue-200;
 }
 
 /* Key 显示样式 */
 .key-text {
   @apply font-mono text-sm bg-slate-100 px-2 py-1 rounded;
+}
+
+.dark .key-text {
+  @apply bg-slate-700 text-slate-300;
 }
 
 /* 过渡动画 */

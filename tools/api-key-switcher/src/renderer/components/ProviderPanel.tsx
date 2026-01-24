@@ -85,8 +85,8 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
       {/* 头部信息 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">{providerInfo.name}</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{providerInfo.name}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             环境变量: <code className="key-text">{envVar}</code>
           </p>
         </div>
@@ -105,7 +105,7 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
 
       {/* 环境变量状态提示 */}
       {isManuallyModified && (
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg">
           <div className="flex items-center space-x-2">
             <svg
               className="w-5 h-5 text-yellow-500"
@@ -120,7 +120,7 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <span className="text-yellow-700 font-medium">
+            <span className="text-yellow-700 dark:text-yellow-300 font-medium">
               环境变量已被手动修改，与配置不匹配
             </span>
           </div>
@@ -129,7 +129,7 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
 
       {/* 当前使用的 Key */}
       {actualCurrentKey && !isManuallyModified && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg">
           <div className="flex items-center space-x-2">
             <svg
               className="w-5 h-5 text-green-500"
@@ -144,7 +144,7 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-green-700 font-medium">当前使用: {actualCurrentKey}</span>
+            <span className="text-green-700 dark:text-green-300 font-medium">当前使用: {actualCurrentKey}</span>
           </div>
         </div>
       )}
@@ -153,7 +153,7 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
       {keys.length === 0 ? (
         <div className="text-center py-12">
           <svg
-            className="w-16 h-16 text-slate-300 mx-auto mb-4"
+            className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -165,8 +165,8 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
               d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
             />
           </svg>
-          <p className="text-slate-600 font-medium mb-2">还没有添加任何 API Key</p>
-          <p className="text-slate-400 text-sm mb-4">添加 API Key 后可以快速切换不同账号或代理服务</p>
+          <p className="text-slate-600 dark:text-slate-300 font-medium mb-2">还没有添加任何 API Key</p>
+          <p className="text-slate-400 dark:text-slate-500 text-sm mb-4">添加 API Key 后可以快速切换不同账号或代理服务</p>
           <button onClick={onAddKey} className="btn btn-primary">
             添加第一个 Key
           </button>
@@ -202,9 +202,9 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
 
       {/* 使用提示 */}
       {keys.length > 0 && (
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h4 className="text-sm font-medium text-blue-700 mb-2">自动设置环境变量</h4>
-          <p className="text-sm text-blue-600">
+        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+          <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">自动设置环境变量</h4>
+          <p className="text-sm text-blue-600 dark:text-blue-400">
             点击"使用"按钮后，系统环境变量会自动设置。新开的终端窗口将自动使用新的配置。
           </p>
         </div>

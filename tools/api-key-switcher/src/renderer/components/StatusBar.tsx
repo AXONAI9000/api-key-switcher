@@ -150,7 +150,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ providerConfig, providerInfo, act
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-slate-800 text-white px-4 py-2 shadow-lg border-t border-slate-700 overflow-hidden">
+    <div className="fixed bottom-0 left-0 right-0 bg-slate-800 dark:bg-slate-900 text-white px-4 py-2 shadow-lg border-t border-slate-700 dark:border-slate-800 overflow-hidden transition-colors duration-200">
       <div ref={containerRef} className="container mx-auto overflow-hidden">
         <div
           ref={contentRef}
