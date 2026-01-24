@@ -21,7 +21,8 @@
       "Bash(python3:*)",
       "Bash(py .claude/skills/ui-ux-pro-max/scripts/search.py:*)",
       "Bash(where:*)",
-      "Bash(cmd /c \"where python\")"
+      "Bash(cmd /c \"where python\")",
+      "Bash(tree:*)"
     ]
   }
 }
