@@ -1,55 +1,135 @@
-import React, { useState } from 'react';
-import { ProviderType, ProviderInfo } from '../../shared/types';
+import React, { useState, useEffect, useRef } from 'react';
+import { ProviderType, ProviderInfo, BASE_URL_ENV_MAP } from '../../shared/types';
 
 interface AddKeyModalProps {
   provider: ProviderType;
   providerInfo: ProviderInfo;
   onClose: () => void;
   onAdd: (key: string, alias: string, baseUrl?: string) => void;
+  isLoading?: boolean;
 }
 
-// 服务商对应的 BASE_URL 环境变量名
-const BASE_URL_ENV_MAP: Record<string, string> = {
-  claude: 'ANTHROPIC_BASE_URL',
-  openai: 'OPENAI_BASE_URL',
-  gemini: 'GOOGLE_API_BASE_URL',
-  deepseek: 'DEEPSEEK_BASE_URL',
-  custom: 'CUSTOM_BASE_URL',
-};
+// Loading spinner component
+const Spinner: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg className={`animate-spin ${className}`} fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+  </svg>
+);
 
 const AddKeyModal: React.FC<AddKeyModalProps> = ({
   provider,
   providerInfo,
   onClose,
   onAdd,
+  isLoading = false,
 }) => {
   const [key, setKey] = useState('');
   const [alias, setAlias] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  const keyInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus the key input on mount
+  useEffect(() => {
+    keyInputRef.current?.focus();
+  }, []);
+
+  // ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, isLoading]);
+
+  // Focus trap
+  useEffect(() => {
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const focusableElements = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleTabKey);
+    return () => document.removeEventListener('keydown', handleTabKey);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!key.trim()) {
-      alert('请输入 API Key');
+    setError(null);
+
+    const trimmedKey = key.trim();
+    if (!trimmedKey) {
+      setError('请输入 API Key');
+      keyInputRef.current?.focus();
       return;
     }
-    onAdd(key.trim(), alias.trim() || undefined!, baseUrl.trim() || undefined);
+
+    if (trimmedKey.length < 10) {
+      setError('API Key 长度不正确');
+      keyInputRef.current?.focus();
+      return;
+    }
+
+    onAdd(trimmedKey, alias.trim() || undefined!, baseUrl.trim() || undefined);
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && !isLoading) {
+      onClose();
+    }
   };
 
   const baseUrlEnvName = BASE_URL_ENV_MAP[provider];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
+      <div
+        ref={modalRef}
+        className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
         {/* 头部 */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">
             添加 {providerInfo.name} Key
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1"
+            disabled={isLoading}
+            className="text-slate-400 hover:text-slate-600 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors disabled:opacity-50"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -67,22 +147,30 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
           <div className="space-y-4">
             {/* API Key 输入 */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="api-key" className="block text-sm font-medium text-slate-700 mb-1">
                 API Key <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
+                  ref={keyInputRef}
+                  id="api-key"
                   type={showKey ? 'text' : 'password'}
                   value={key}
-                  onChange={(e) => setKey(e.target.value)}
+                  onChange={(e) => {
+                    setKey(e.target.value);
+                    if (error) setError(null);
+                  }}
                   placeholder="输入你的 API Key"
-                  className="input pr-10"
-                  autoFocus
+                  className={`input pr-10 ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  disabled={isLoading}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'key-error' : 'key-hint'}
                 />
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                  tabIndex={-1}
                 >
                   {showKey ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,22 +199,30 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                   )}
                 </button>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Key 将存储在本地配置文件中
-              </p>
+              {error ? (
+                <p id="key-error" className="text-xs text-red-500 mt-1" role="alert">
+                  {error}
+                </p>
+              ) : (
+                <p id="key-hint" className="text-xs text-slate-500 mt-1">
+                  Key 将存储在本地配置文件中
+                </p>
+              )}
             </div>
 
             {/* Base URL 输入 */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="base-url" className="block text-sm font-medium text-slate-700 mb-1">
                 API Base URL (可选)
               </label>
               <input
+                id="base-url"
                 type="text"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
                 placeholder="例如: https://api.example.com"
                 className="input"
+                disabled={isLoading}
               />
               <p className="text-xs text-slate-500 mt-1">
                 用于代理服务，留空则使用官方默认地址
@@ -135,15 +231,17 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
 
             {/* 别名输入 */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="alias" className="block text-sm font-medium text-slate-700 mb-1">
                 别名 (可选)
               </label>
               <input
+                id="alias"
                 type="text"
                 value={alias}
                 onChange={(e) => setAlias(e.target.value)}
                 placeholder="例如: 主账号、代理服务"
                 className="input"
+                disabled={isLoading}
               />
               <p className="text-xs text-slate-500 mt-1">
                 用于标识和区分不同的 Key，留空将自动生成
@@ -178,11 +276,20 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
 
           {/* 按钮 */}
           <div className="flex justify-end space-x-3 mt-6">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading}
+              className="btn btn-secondary"
+            >
               取消
             </button>
-            <button type="submit" className="btn btn-primary">
-              添加
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn btn-primary min-w-[80px] flex items-center justify-center"
+            >
+              {isLoading ? <Spinner /> : '添加'}
             </button>
           </div>
         </form>

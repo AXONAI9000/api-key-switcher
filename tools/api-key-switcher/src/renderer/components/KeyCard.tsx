@@ -9,6 +9,9 @@ interface KeyCardProps {
   onSwitch: () => void;
   onToggle: () => void;
   onRemove: () => void;
+  isSwitching?: boolean;
+  isToggling?: boolean;
+  isRemoving?: boolean;
 }
 
 // 遮蔽 Key 显示
@@ -19,16 +22,29 @@ function maskKey(key: string): string {
   return key.substring(0, 4) + '****' + key.substring(key.length - 4);
 }
 
+// Loading spinner component
+const Spinner: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg className={`animate-spin ${className}`} fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+  </svg>
+);
+
 const KeyCard: React.FC<KeyCardProps> = ({
   apiKey,
   isCurrent,
   onSwitch,
   onToggle,
   onRemove,
+  isSwitching = false,
+  isToggling = false,
+  isRemoving = false,
 }) => {
   const [showKey, setShowKey] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { alias, key, enabled, createdAt } = apiKey;
+  const isLoading = isSwitching || isToggling || isRemoving;
 
   const {
     attributes,
@@ -45,6 +61,16 @@ const KeyCard: React.FC<KeyCardProps> = ({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(key);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -55,14 +81,14 @@ const KeyCard: React.FC<KeyCardProps> = ({
           : enabled
           ? 'border-slate-200 bg-white hover:border-slate-300'
           : 'border-slate-100 bg-slate-50 opacity-60'
-      } ${isDragging ? 'shadow-lg z-50' : ''}`}
+      } ${isDragging ? 'shadow-lg z-50' : ''} ${isLoading ? 'pointer-events-none' : ''}`}
     >
       <div className="flex items-center justify-between">
         {/* 拖拽手柄 */}
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-2 -ml-2 mr-2 text-slate-400 hover:text-slate-600"
+          className="cursor-grab active:cursor-grabbing p-2 -ml-2 mr-2 text-slate-400 hover:text-slate-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
           title="拖拽排序"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +117,7 @@ const KeyCard: React.FC<KeyCardProps> = ({
             </code>
             <button
               onClick={() => setShowKey(!showKey)}
-              className="text-slate-400 hover:text-slate-600 p-1"
+              className="text-slate-400 hover:text-slate-600 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors"
               title={showKey ? '隐藏 Key' : '显示 Key'}
             >
               {showKey ? (
@@ -121,18 +147,28 @@ const KeyCard: React.FC<KeyCardProps> = ({
               )}
             </button>
             <button
-              onClick={() => navigator.clipboard.writeText(key)}
-              className="text-slate-400 hover:text-slate-600 p-1"
-              title="复制 Key"
+              onClick={handleCopy}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md transition-colors ${
+                copied
+                  ? 'text-green-500 bg-green-50'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+              }`}
+              title={copied ? '已复制' : '复制 Key'}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
+              {copied ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              )}
             </button>
           </div>
           <p className="text-xs text-slate-400 mt-2">
@@ -144,36 +180,43 @@ const KeyCard: React.FC<KeyCardProps> = ({
           {!isCurrent && enabled && (
             <button
               onClick={onSwitch}
-              className="btn btn-primary py-1.5 px-3 text-sm"
+              disabled={isLoading}
+              className="btn btn-primary py-1.5 px-3 text-sm min-w-[60px] flex items-center justify-center"
               title="切换到此 Key"
             >
-              使用
+              {isSwitching ? <Spinner /> : '使用'}
             </button>
           )}
 
           <button
             onClick={onToggle}
-            className={`btn py-1.5 px-3 text-sm ${
+            disabled={isLoading}
+            className={`btn py-1.5 px-3 text-sm min-w-[60px] flex items-center justify-center ${
               enabled ? 'btn-secondary' : 'btn-ghost'
             }`}
             title={enabled ? '禁用' : '启用'}
           >
-            {enabled ? '禁用' : '启用'}
+            {isToggling ? <Spinner /> : (enabled ? '禁用' : '启用')}
           </button>
 
           <button
             onClick={onRemove}
-            className="btn btn-ghost text-red-500 hover:bg-red-50 py-1.5 px-3 text-sm"
+            disabled={isLoading}
+            className="btn btn-ghost text-red-500 hover:bg-red-50 py-1.5 px-3 text-sm min-w-[44px] min-h-[44px] flex items-center justify-center"
             title="删除"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
+            {isRemoving ? (
+              <Spinner />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            )}
           </button>
         </div>
       </div>

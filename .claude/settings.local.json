@@ -16,7 +16,12 @@
       "Bash(npm run build:*)",
       "Bash(powershell -Command \"[System.Environment]::GetEnvironmentVariable\\(''ANTHROPIC_API_KEY'', ''User''\\)\")",
       "Bash(powershell:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(py .claude/skills/ui-ux-pro-max/scripts/search.py:*)",
+      "Bash(where:*)",
+      "Bash(cmd /c \"where python\")"
     ]
   }
 }

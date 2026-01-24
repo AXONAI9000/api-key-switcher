@@ -1,20 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { ProviderConfig, ProviderInfo, ActualEnvStatus } from '../../shared/types';
+import { ProviderConfig, ProviderInfo, ActualEnvStatus, BASE_URL_ENV_MAP, ProviderType } from '../../shared/types';
 
 interface StatusBarProps {
   providerConfig: ProviderConfig | null;
   providerInfo: ProviderInfo | null;
   actualEnvStatus: ActualEnvStatus | null;
 }
-
-// 服务商对应的 BASE_URL 环境变量名
-const BASE_URL_ENV_MAP: Record<string, string> = {
-  claude: 'ANTHROPIC_BASE_URL',
-  openai: 'OPENAI_BASE_URL',
-  gemini: 'GOOGLE_API_BASE_URL',
-  deepseek: 'DEEPSEEK_BASE_URL',
-  custom: 'CUSTOM_BASE_URL',
-};
 
 // 状态栏内容组件
 const StatusContent: React.FC<{

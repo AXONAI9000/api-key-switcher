@@ -26,6 +26,9 @@ interface ProviderPanelProps {
   onSwitchKey: (alias: string) => void;
   onToggleKey: (alias: string) => void;
   onReorderKeys: (aliases: string[]) => void;
+  isSwitching: string | null;
+  isToggling: string | null;
+  isRemoving: string | null;
 }
 
 const ProviderPanel: React.FC<ProviderPanelProps> = ({
@@ -38,6 +41,9 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
   onSwitchKey,
   onToggleKey,
   onReorderKeys,
+  isSwitching,
+  isToggling,
+  isRemoving,
 }) => {
   const { keys, envVar } = providerConfig;
 
@@ -159,7 +165,8 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
               d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
             />
           </svg>
-          <p className="text-slate-500 mb-4">还没有添加任何 API Key</p>
+          <p className="text-slate-600 font-medium mb-2">还没有添加任何 API Key</p>
+          <p className="text-slate-400 text-sm mb-4">添加 API Key 后可以快速切换不同账号或代理服务</p>
           <button onClick={onAddKey} className="btn btn-primary">
             添加第一个 Key
           </button>
@@ -183,6 +190,9 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
                   onSwitch={() => onSwitchKey(key.alias)}
                   onToggle={() => onToggleKey(key.alias)}
                   onRemove={() => onRemoveKey(key.alias)}
+                  isSwitching={isSwitching === key.alias}
+                  isToggling={isToggling === key.alias}
+                  isRemoving={isRemoving === key.alias}
                 />
               ))}
             </div>
@@ -192,9 +202,9 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
 
       {/* 使用提示 */}
       {keys.length > 0 && (
-        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <h4 className="text-sm font-medium text-green-700 mb-2">自动设置环境变量</h4>
-          <p className="text-sm text-green-600">
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h4 className="text-sm font-medium text-blue-700 mb-2">自动设置环境变量</h4>
+          <p className="text-sm text-blue-600">
             点击"使用"按钮后，系统环境变量会自动设置。新开的终端窗口将自动使用新的配置。
           </p>
         </div>

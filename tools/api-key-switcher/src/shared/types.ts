@@ -67,6 +67,15 @@ export const DEFAULT_PROVIDERS: Record<ProviderType, ProviderInfo> = {
   },
 };
 
+// 服务商对应的 BASE_URL 环境变量名
+export const BASE_URL_ENV_MAP: Record<ProviderType, string> = {
+  claude: 'ANTHROPIC_BASE_URL',
+  openai: 'OPENAI_BASE_URL',
+  gemini: 'GOOGLE_API_BASE_URL',
+  deepseek: 'DEEPSEEK_BASE_URL',
+  custom: 'CUSTOM_BASE_URL',
+};
+
 // IPC 通道名称
 export const IPC_CHANNELS = {
   // 配置相关
