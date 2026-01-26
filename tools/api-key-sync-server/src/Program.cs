@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using ApiKeySyncServer.Data;
 using ApiKeySyncServer.Middleware;
 using ApiKeySyncServer.Services;
 
@@ -41,7 +43,19 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 注册同步服务
+// 配置数据库
+var dataDirectory = builder.Configuration["DataDirectory"] ?? "./data";
+if (!Directory.Exists(dataDirectory))
+{
+    Directory.CreateDirectory(dataDirectory);
+}
+var dbPath = Path.Combine(dataDirectory, "app.db");
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite($"Data Source={dbPath}"));
+
+// 注册服务
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<ISyncService, SyncService>();
 
 // 配置 CORS
@@ -57,6 +71,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// 自动迁移数据库
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    dbContext.Database.EnsureCreated();
+}
+
 // 配置中间件管道
 if (app.Environment.IsDevelopment())
 {
@@ -65,7 +86,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-app.UseTokenAuth();
+app.UseJwtAuth();
 app.MapControllers();
 
 // 启动应用

@@ -5,6 +5,10 @@
 // 类型导出
 export * from './types';
 
+// 认证类型和服务
+export * from './auth-types';
+export { AuthService, authService } from './auth-service';
+
 // 加密功能
 export * from './crypto';
 

@@ -10,20 +10,15 @@ public interface ISyncService
     /// <summary>
     /// 获取同步状态
     /// </summary>
-    Task<SyncStatusResponse> GetStatusAsync(string token);
+    Task<SyncStatusResponse> GetStatusAsync(Guid userId);
 
     /// <summary>
     /// 获取配置
     /// </summary>
-    Task<EncryptedPackage?> GetConfigAsync(string token);
+    Task<EncryptedPackage?> GetConfigAsync(Guid userId);
 
     /// <summary>
     /// 保存配置
     /// </summary>
-    Task<PushResponse> SaveConfigAsync(string token, EncryptedPackage data);
-
-    /// <summary>
-    /// 验证 Token
-    /// </summary>
-    bool ValidateToken(string token);
+    Task<PushResponse> SaveConfigAsync(Guid userId, EncryptedPackage data);
 }

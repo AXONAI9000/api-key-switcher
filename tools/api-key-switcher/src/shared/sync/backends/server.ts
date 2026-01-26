@@ -16,6 +16,7 @@ import {
   BackendAuthError,
   BackendDataError,
 } from './base';
+import { authService } from '../auth-service';
 
 // HTTP 请求超时（毫秒）
 const REQUEST_TIMEOUT = 30000;
@@ -69,6 +70,8 @@ export class ServerSyncBackend extends BaseSyncBackend {
     super();
     this.config = config;
     this.deviceId = deviceId;
+    // 配置 AuthService
+    authService.configure(config.url, deviceId);
   }
 
   /**
@@ -81,9 +84,13 @@ export class ServerSyncBackend extends BaseSyncBackend {
   /**
    * 获取认证头
    */
-  private get authHeaders(): Record<string, string> {
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const accessToken = await authService.getAccessToken();
+    if (!accessToken) {
+      throw new BackendAuthError('未登录，请先登录', this.type);
+    }
     return {
-      'Authorization': `Bearer ${this.config.token}`,
+      'Authorization': `Bearer ${accessToken}`,
       'X-Device-Id': this.deviceId,
       'Content-Type': 'application/json',
     };
@@ -103,9 +110,10 @@ export class ServerSyncBackend extends BaseSyncBackend {
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
     try {
+      const headers = await this.getAuthHeaders();
       const response = await fetch(url, {
         method,
-        headers: this.authHeaders,
+        headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -131,6 +139,10 @@ export class ServerSyncBackend extends BaseSyncBackend {
     } catch (error) {
       clearTimeout(timeoutId);
 
+      if (error instanceof BackendAuthError) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           throw new BackendConnectionError('Request timeout', this.type);
@@ -142,17 +154,30 @@ export class ServerSyncBackend extends BaseSyncBackend {
   }
 
   /**
+   * 检查是否已认证
+   */
+  isAuthenticated(): boolean {
+    return authService.isAuthenticated();
+  }
+
+  /**
    * 连接到服务器
    */
   async connect(): Promise<boolean> {
+    // 检查是否已登录
+    if (!authService.isAuthenticated()) {
+      throw new BackendAuthError('未登录，请先登录', this.type);
+    }
+
     try {
-      const response = await this.request<{ success: boolean }>(
-        'POST',
-        '/api/v1/sync/auth'
+      // 尝试获取状态来验证连接
+      const response = await this.request<ServerStatusResponse>(
+        'GET',
+        '/api/v1/sync/status'
       );
 
       if (response.status === 401) {
-        throw new BackendAuthError('Invalid token', this.type);
+        throw new BackendAuthError('认证失败，请重新登录', this.type);
       }
 
       if (!response.ok) {
@@ -182,7 +207,7 @@ export class ServerSyncBackend extends BaseSyncBackend {
       );
 
       if (response.status === 401) {
-        throw new BackendAuthError('Invalid token', this.type);
+        throw new BackendAuthError('认证失败，请重新登录', this.type);
       }
 
       if (!response.ok || !response.data) {
@@ -222,7 +247,7 @@ export class ServerSyncBackend extends BaseSyncBackend {
       );
 
       if (response.status === 401) {
-        throw new BackendAuthError('Invalid token', this.type);
+        throw new BackendAuthError('认证失败，请重新登录', this.type);
       }
 
       if (response.status === 404) {
@@ -271,7 +296,7 @@ export class ServerSyncBackend extends BaseSyncBackend {
       );
 
       if (response.status === 401) {
-        throw new BackendAuthError('Invalid token', this.type);
+        throw new BackendAuthError('认证失败，请重新登录', this.type);
       }
 
       if (!response.ok) {
@@ -307,5 +332,7 @@ export class ServerSyncBackend extends BaseSyncBackend {
   updateConfig(config: ServerSyncConfig): void {
     this.config = config;
     this.connected = false;
+    // 重新配置 AuthService
+    authService.configure(config.url, this.deviceId);
   }
 }

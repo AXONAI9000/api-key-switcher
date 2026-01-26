@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using ApiKeySyncServer.Models;
 
@@ -21,51 +19,27 @@ public class SyncService : ISyncService
         _dataDirectory = configuration["DataDirectory"] ?? Path.Combine(AppContext.BaseDirectory, "data");
 
         // 确保数据目录存在
-        if (!Directory.Exists(_dataDirectory))
+        var configsDir = Path.Combine(_dataDirectory, "configs");
+        if (!Directory.Exists(configsDir))
         {
-            Directory.CreateDirectory(_dataDirectory);
+            Directory.CreateDirectory(configsDir);
         }
-    }
-
-    /// <summary>
-    /// 验证 Token
-    /// </summary>
-    public bool ValidateToken(string token)
-    {
-        if (string.IsNullOrEmpty(token))
-        {
-            return false;
-        }
-
-        var validTokens = _configuration.GetSection("ValidTokens").Get<string[]>();
-        if (validTokens == null || validTokens.Length == 0)
-        {
-            // 如果没有配置 Token，使用默认 Token
-            var defaultToken = _configuration["DefaultToken"];
-            return !string.IsNullOrEmpty(defaultToken) && token == defaultToken;
-        }
-
-        return validTokens.Contains(token);
     }
 
     /// <summary>
     /// 获取用户数据文件路径
     /// </summary>
-    private string GetUserDataPath(string token)
+    private string GetUserDataPath(Guid userId)
     {
-        // 使用 Token 的哈希作为文件名，避免直接暴露 Token
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
-        var hashString = Convert.ToHexString(hashBytes).ToLowerInvariant();
-        return Path.Combine(_dataDirectory, $"{hashString}.json");
+        return Path.Combine(_dataDirectory, "configs", $"{userId}.json");
     }
 
     /// <summary>
     /// 获取同步状态
     /// </summary>
-    public async Task<SyncStatusResponse> GetStatusAsync(string token)
+    public async Task<SyncStatusResponse> GetStatusAsync(Guid userId)
     {
-        var filePath = GetUserDataPath(token);
+        var filePath = GetUserDataPath(userId);
         var response = new SyncStatusResponse
         {
             Connected = true,
@@ -101,9 +75,9 @@ public class SyncService : ISyncService
     /// <summary>
     /// 获取配置
     /// </summary>
-    public async Task<EncryptedPackage?> GetConfigAsync(string token)
+    public async Task<EncryptedPackage?> GetConfigAsync(Guid userId)
     {
-        var filePath = GetUserDataPath(token);
+        var filePath = GetUserDataPath(userId);
 
         if (!File.Exists(filePath))
         {
@@ -128,9 +102,9 @@ public class SyncService : ISyncService
     /// <summary>
     /// 保存配置
     /// </summary>
-    public async Task<PushResponse> SaveConfigAsync(string token, EncryptedPackage data)
+    public async Task<PushResponse> SaveConfigAsync(Guid userId, EncryptedPackage data)
     {
-        var filePath = GetUserDataPath(token);
+        var filePath = GetUserDataPath(userId);
         var timestamp = DateTime.UtcNow.ToString("o");
 
         try
@@ -143,7 +117,7 @@ public class SyncService : ISyncService
 
             await File.WriteAllTextAsync(filePath, content);
 
-            _logger.LogInformation("Config saved for token hash: {TokenHash}", Path.GetFileNameWithoutExtension(filePath));
+            _logger.LogInformation("Config saved for user: {UserId}", userId);
 
             return new PushResponse
             {

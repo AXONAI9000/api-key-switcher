@@ -14,7 +14,8 @@ export type ConflictResolution = 'local' | 'remote' | 'merge';
 // 自建服务器配置
 export interface ServerSyncConfig {
   url: string;
-  token: string;
+  // 注意：token 已移除，改用 JWT 认证
+  // 认证状态由 AuthService 管理
 }
 
 // GitHub Gist 配置

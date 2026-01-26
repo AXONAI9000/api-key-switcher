@@ -3,24 +3,35 @@ using ApiKeySyncServer.Services;
 namespace ApiKeySyncServer.Middleware;
 
 /// <summary>
-/// Token 认证中间件
+/// JWT 认证中间件
 /// </summary>
-public class TokenAuthMiddleware
+public class JwtAuthMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<TokenAuthMiddleware> _logger;
+    private readonly ILogger<JwtAuthMiddleware> _logger;
 
-    public TokenAuthMiddleware(RequestDelegate next, ILogger<TokenAuthMiddleware> logger)
+    // 不需要认证的路径
+    private static readonly string[] PublicPaths = new[]
+    {
+        "/health",
+        "/swagger",
+        "/api/v1/auth/register",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh"
+    };
+
+    public JwtAuthMiddleware(RequestDelegate next, ILogger<JwtAuthMiddleware> logger)
     {
         _next = next;
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, ISyncService syncService)
+    public async Task InvokeAsync(HttpContext context, IJwtService jwtService)
     {
-        // 跳过健康检查和 Swagger 端点
         var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-        if (path == "/health" || path.StartsWith("/swagger"))
+
+        // 检查是否是公开路径
+        if (IsPublicPath(path))
         {
             await _next(context);
             return;
@@ -47,17 +58,18 @@ public class TokenAuthMiddleware
 
         var token = authHeader["Bearer ".Length..].Trim();
 
-        // 验证 Token
-        if (!syncService.ValidateToken(token))
+        // 验证 JWT Token
+        var userId = jwtService.ValidateAccessToken(token);
+        if (userId == null)
         {
-            _logger.LogWarning("Invalid token for path: {Path}", path);
+            _logger.LogWarning("Invalid or expired token for path: {Path}", path);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsJsonAsync(new { error = "Invalid token" });
+            await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token" });
             return;
         }
 
-        // 将 Token 存储到 HttpContext.Items 中供后续使用
-        context.Items["Token"] = token;
+        // 将用户 ID 存储到 HttpContext.Items 中供后续使用
+        context.Items["UserId"] = userId.Value;
 
         // 提取设备 ID（如果有）
         var deviceId = context.Request.Headers["X-Device-Id"].FirstOrDefault();
@@ -68,15 +80,27 @@ public class TokenAuthMiddleware
 
         await _next(context);
     }
+
+    private static bool IsPublicPath(string path)
+    {
+        foreach (var publicPath in PublicPaths)
+        {
+            if (path == publicPath || path.StartsWith(publicPath + "/") || path.StartsWith(publicPath))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 /// <summary>
 /// 中间件扩展方法
 /// </summary>
-public static class TokenAuthMiddlewareExtensions
+public static class JwtAuthMiddlewareExtensions
 {
-    public static IApplicationBuilder UseTokenAuth(this IApplicationBuilder builder)
+    public static IApplicationBuilder UseJwtAuth(this IApplicationBuilder builder)
     {
-        return builder.UseMiddleware<TokenAuthMiddleware>();
+        return builder.UseMiddleware<JwtAuthMiddleware>();
     }
 }
