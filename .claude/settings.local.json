@@ -23,7 +23,9 @@
       "Bash(where:*)",
       "Bash(cmd /c \"where python\")",
       "Bash(tree:*)",
-      "Bash(dir /s /b \"D:\\\\vsodeproject\\\\kirocode\\\\AI9000\\\\tools\\\\api-key-switcher\\\\src\")"
+      "Bash(dir /s /b \"D:\\\\vsodeproject\\\\kirocode\\\\AI9000\\\\tools\\\\api-key-switcher\\\\src\")",
+      "Bash(cd:*)",
+      "Bash(dir:*)"
     ]
   }
 }
