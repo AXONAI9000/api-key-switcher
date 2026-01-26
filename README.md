@@ -4,9 +4,17 @@
 
 ## 工具列表
 
+### 客户端
+
 | 工具 | 描述 | 技术栈 | 下载 |
 |------|------|--------|------|
 | [api-key-switcher](tools/api-key-switcher) | 多 AI 服务商 API Key 管理与切换 | Electron + React | [Windows exe](https://github.com/AXONAI9000/AI9000/releases/download/api-key-switcher-latest/API-Key-Switcher.exe) |
+
+### 服务端
+
+| 工具 | 描述 | 技术栈 | 部署方式 |
+|------|------|--------|----------|
+| [api-key-sync-server](tools/api-key-sync-server) | API Key 配置同步服务器（零知识存储） | .NET 10 | [Docker](tools/api-key-sync-server#docker-部署) |
 
 ## 添加新工具
 
