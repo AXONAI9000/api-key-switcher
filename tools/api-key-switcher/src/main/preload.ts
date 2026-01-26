@@ -18,6 +18,18 @@ const IPC_CHANNELS = {
   MINIMIZE_TO_TRAY: 'window:minimize-to-tray',
   SHOW_WINDOW: 'window:show',
   CLOSE_WINDOW: 'window:close',
+  // 同步相关
+  SYNC_GET_CONFIG: 'sync:get-config',
+  SYNC_SAVE_CONFIG: 'sync:save-config',
+  SYNC_TEST_CONNECTION: 'sync:test-connection',
+  SYNC_PULL: 'sync:pull',
+  SYNC_PUSH: 'sync:push',
+  SYNC_EXECUTE: 'sync:execute',
+  SYNC_GET_STATUS: 'sync:get-status',
+  SYNC_RESOLVE_CONFLICT: 'sync:resolve-conflict',
+  SYNC_SET_MASTER_PASSWORD: 'sync:set-master-password',
+  SYNC_VERIFY_MASTER_PASSWORD: 'sync:verify-master-password',
+  SYNC_STATUS_CHANGED: 'sync:status-changed',
 } as const;
 
 // 暴露安全的 API 到渲染进程
@@ -58,6 +70,50 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('config-updated', callback);
     return () => {
       ipcRenderer.removeListener('config-updated', callback);
+    };
+  },
+
+  // ========== 同步相关 API ==========
+
+  // 获取同步配置
+  syncGetConfig: () => ipcRenderer.invoke(IPC_CHANNELS.SYNC_GET_CONFIG),
+
+  // 保存同步配置
+  syncSaveConfig: (config: unknown) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_SAVE_CONFIG, config),
+
+  // 测试连接
+  syncTestConnection: () => ipcRenderer.invoke(IPC_CHANNELS.SYNC_TEST_CONNECTION),
+
+  // 拉取配置
+  syncPull: () => ipcRenderer.invoke(IPC_CHANNELS.SYNC_PULL),
+
+  // 推送配置
+  syncPush: () => ipcRenderer.invoke(IPC_CHANNELS.SYNC_PUSH),
+
+  // 执行同步
+  syncExecute: () => ipcRenderer.invoke(IPC_CHANNELS.SYNC_EXECUTE),
+
+  // 获取同步状态
+  syncGetStatus: () => ipcRenderer.invoke(IPC_CHANNELS.SYNC_GET_STATUS),
+
+  // 解决冲突
+  syncResolveConflict: (resolution: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_RESOLVE_CONFLICT, resolution),
+
+  // 设置主密码
+  syncSetMasterPassword: (password: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_SET_MASTER_PASSWORD, password),
+
+  // 验证主密码
+  syncVerifyMasterPassword: (password: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_VERIFY_MASTER_PASSWORD, password),
+
+  // 监听同步状态变更
+  onSyncStatusChange: (callback: (event: unknown) => void) => {
+    ipcRenderer.on(IPC_CHANNELS.SYNC_STATUS_CHANGED, (_, data) => callback(data));
+    return () => {
+      ipcRenderer.removeAllListeners(IPC_CHANNELS.SYNC_STATUS_CHANGED);
     };
   },
 });

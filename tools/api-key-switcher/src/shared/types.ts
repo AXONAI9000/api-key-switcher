@@ -101,6 +101,19 @@ export const IPC_CHANNELS = {
   MINIMIZE_TO_TRAY: 'window:minimize-to-tray',
   SHOW_WINDOW: 'window:show',
   CLOSE_WINDOW: 'window:close',
+
+  // 同步相关
+  SYNC_GET_CONFIG: 'sync:get-config',
+  SYNC_SAVE_CONFIG: 'sync:save-config',
+  SYNC_TEST_CONNECTION: 'sync:test-connection',
+  SYNC_PULL: 'sync:pull',
+  SYNC_PUSH: 'sync:push',
+  SYNC_EXECUTE: 'sync:execute',
+  SYNC_GET_STATUS: 'sync:get-status',
+  SYNC_RESOLVE_CONFLICT: 'sync:resolve-conflict',
+  SYNC_SET_MASTER_PASSWORD: 'sync:set-master-password',
+  SYNC_VERIFY_MASTER_PASSWORD: 'sync:verify-master-password',
+  SYNC_STATUS_CHANGED: 'sync:status-changed',
 } as const;
 
 // 实际环境变量状态

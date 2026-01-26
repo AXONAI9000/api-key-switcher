@@ -33,6 +33,15 @@ import {
   AppConfig,
   ActualEnvStatus,
 } from '../shared/types';
+import {
+  getSyncManager,
+  SyncConfig,
+  SyncResult,
+  SyncStatus,
+  ConflictResolution,
+  SyncManagerState,
+  MasterPasswordResult,
+} from '../shared/sync';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -461,6 +470,168 @@ function setupIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.CLOSE_WINDOW, (): IpcResponse => {
     mainWindow?.hide();
     return { success: true };
+  });
+
+  // ========== 同步相关 IPC 处理器 ==========
+
+  const syncManager = getSyncManager();
+
+  // 监听同步状态变更，通知渲染进程
+  syncManager.addStatusListener((event) => {
+    mainWindow?.webContents.send(IPC_CHANNELS.SYNC_STATUS_CHANGED, event);
+  });
+
+  // 获取同步配置
+  ipcMain.handle(IPC_CHANNELS.SYNC_GET_CONFIG, (): IpcResponse<SyncConfig> => {
+    try {
+      const config = syncManager.getSyncConfig();
+      return { success: true, data: config };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // 保存同步配置
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_SAVE_CONFIG,
+    async (_, config: Partial<SyncConfig>): Promise<IpcResponse> => {
+      try {
+        await syncManager.updateSyncConfig(config);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 测试连接
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_TEST_CONNECTION,
+    async (): Promise<IpcResponse<{ connected: boolean }>> => {
+      try {
+        const result = await syncManager.testConnection();
+        return { success: result.success, data: { connected: result.success }, error: result.error };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 拉取配置
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_PULL,
+    async (): Promise<IpcResponse<SyncResult>> => {
+      try {
+        const localConfig = loadConfig();
+        const result = await syncManager.pull(localConfig);
+        return { success: result.success, data: result, error: result.error };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 推送配置
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_PUSH,
+    async (): Promise<IpcResponse<SyncResult>> => {
+      try {
+        const localConfig = loadConfig();
+        const result = await syncManager.push(localConfig);
+        return { success: result.success, data: result, error: result.error };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 执行同步（双向）
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_EXECUTE,
+    async (): Promise<IpcResponse<SyncResult>> => {
+      try {
+        const localConfig = loadConfig();
+        const result = await syncManager.sync(localConfig);
+
+        // 如果同步成功且有远程更新，通知渲染进程刷新
+        if (result.success) {
+          mainWindow?.webContents.send('config-updated');
+        }
+
+        return { success: result.success, data: result, error: result.error };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 获取同步状态
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_GET_STATUS,
+    (): IpcResponse<SyncManagerState> => {
+      try {
+        const state = syncManager.getState();
+        return { success: true, data: state };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 解决冲突
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_RESOLVE_CONFLICT,
+    async (_, resolution: ConflictResolution): Promise<IpcResponse<AppConfig | null>> => {
+      try {
+        const localConfig = loadConfig();
+        const result = await syncManager.resolveConflict(resolution, localConfig);
+
+        if (result.success && result.config) {
+          // 如果解决冲突后配置有变化，保存并通知
+          if (resolution !== 'local') {
+            saveConfig(result.config);
+            updateTrayMenu();
+            mainWindow?.webContents.send('config-updated');
+          }
+          return { success: true, data: result.config };
+        }
+
+        return { success: false, error: result.error };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 设置主密码
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_SET_MASTER_PASSWORD,
+    async (_, password: string): Promise<IpcResponse> => {
+      try {
+        const result = await syncManager.setMasterPassword(password);
+        return { success: result.success, error: result.error };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 验证主密码
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_VERIFY_MASTER_PASSWORD,
+    async (_, password: string): Promise<IpcResponse<MasterPasswordResult>> => {
+      try {
+        const result = await syncManager.verifyMasterPassword(password);
+        return { success: true, data: result };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 初始化同步管理器
+  syncManager.initialize().catch((error) => {
+    console.error('Failed to initialize sync manager:', error);
   });
 }
 

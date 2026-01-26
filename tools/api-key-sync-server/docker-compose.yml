@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  api-key-sync-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-key-sync-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - PORT=5000
+      - DataDirectory=/app/data
+      - DefaultToken=${SYNC_TOKEN:-your-secure-token-here}
+    volumes:
+      - sync-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  sync-data:
+    driver: local

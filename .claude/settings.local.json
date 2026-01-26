@@ -22,7 +22,8 @@
       "Bash(py .claude/skills/ui-ux-pro-max/scripts/search.py:*)",
       "Bash(where:*)",
       "Bash(cmd /c \"where python\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(dir /s /b \"D:\\\\vsodeproject\\\\kirocode\\\\AI9000\\\\tools\\\\api-key-switcher\\\\src\")"
     ]
   }
 }

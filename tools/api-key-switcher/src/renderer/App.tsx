@@ -7,6 +7,7 @@ import StatusBar from './components/StatusBar';
 import { ToastProvider, useToast } from './components/Toast';
 import ConfirmModal from './components/ConfirmModal';
 import { ThemeProvider } from './components/ThemeContext';
+import { SyncProvider, SyncSettings, SyncConflictModal, useSyncContext } from './components/sync';
 
 // Provider icons
 const PROVIDER_ICONS: Record<ProviderType, React.ReactNode> = {
@@ -40,9 +41,11 @@ const PROVIDER_ICONS: Record<ProviderType, React.ReactNode> = {
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
+  const { pendingConflict, resolveConflict } = useSyncContext();
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderType>('claude');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSyncSettings, setShowSyncSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actualEnvStatus, setActualEnvStatus] = useState<ActualEnvStatus | null>(null);
@@ -283,6 +286,7 @@ const AppContent: React.FC = () => {
         onExport={handleExport}
         onImport={handleImport}
         onMinimize={handleMinimize}
+        onSyncClick={() => setShowSyncSettings(true)}
       />
 
       <div className="container mx-auto px-4 py-6">
@@ -352,16 +356,34 @@ const AppContent: React.FC = () => {
         providerInfo={DEFAULT_PROVIDERS[selectedProvider]}
         actualEnvStatus={actualEnvStatus}
       />
+
+      {/* 同步设置弹窗 */}
+      <SyncSettings
+        isOpen={showSyncSettings}
+        onClose={() => setShowSyncSettings(false)}
+      />
+
+      {/* 同步冲突弹窗 */}
+      {pendingConflict && (
+        <SyncConflictModal
+          isOpen={true}
+          conflictData={pendingConflict}
+          onResolve={resolveConflict}
+          onClose={() => {}}
+        />
+      )}
     </div>
   );
 };
 
-// Wrap with ToastProvider and ThemeProvider
+// Wrap with ThemeProvider, ToastProvider, and SyncProvider
 const App: React.FC = () => {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AppContent />
+        <SyncProvider>
+          <AppContent />
+        </SyncProvider>
       </ToastProvider>
     </ThemeProvider>
   );

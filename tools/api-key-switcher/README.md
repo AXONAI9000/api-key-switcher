@@ -18,6 +18,8 @@
 - 图形界面 + 命令行双模式
 - 系统托盘快速切换
 - 导入/导出配置备份
+- **跨设备同步**（支持自建服务器、GitHub Gist、WebDAV）
+- **端到端加密**（AES-256-GCM）
 
 ## 安装
 
@@ -129,3 +131,47 @@ npm run cli -- list
 ## 许可证
 
 MIT
+
+## 同步功能
+
+支持跨设备同步 API Key 配置，所有数据端到端加密。
+
+### 支持的同步后端
+
+| 后端 | 说明 |
+|------|------|
+| 自建服务器 | 完全掌控数据，Docker 一键部署 |
+| GitHub Gist | 免费，无需部署服务器 |
+| WebDAV | 支持坚果云、Nextcloud 等 |
+
+### 安全特性
+
+- AES-256-GCM 加密
+- PBKDF2 密钥派生（100,000 次迭代）
+- 零知识存储（服务器无法解密）
+
+详细文档：
+- [同步功能使用指南](docs/sync-guide.md)
+- [安全说明](docs/security.md)
+
+### 部署同步服务器
+
+```bash
+cd ../api-key-sync-server
+
+# 设置访问令牌
+export SYNC_TOKEN="your-secure-token"
+
+# 启动服务
+docker-compose up -d
+```
+
+## 测试
+
+```bash
+# 运行测试
+npm test
+
+# 监听模式
+npm run test:watch
+```
