@@ -4,11 +4,12 @@
 
 ## 功能特性
 
+- **完全离线使用** - 无需服务端，开箱即用
 - 支持多个 AI 服务商 (Claude, OpenAI, Gemini, DeepSeek)
 - 图形界面 + 命令行双模式
 - 系统托盘快速切换
 - 导入/导出配置备份
-- 跨设备同步（支持自建服务器、GitHub Gist、WebDAV）
+- 跨设备同步（可选，支持自建服务器、GitHub Gist、WebDAV）
 - 端到端加密（AES-256-GCM）
 
 ## 下载
