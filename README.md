@@ -1,26 +1,62 @@
-# AI9000 - AI工具集合
+# API Key Switcher
 
-由 AI 辅助生成的实用开发工具。
+一个用于管理和切换多个 AI 服务商 API Key 的桌面工具。
 
-## 工具列表
+## 功能特性
+
+- 支持多个 AI 服务商 (Claude, OpenAI, Gemini, DeepSeek)
+- 图形界面 + 命令行双模式
+- 系统托盘快速切换
+- 导入/导出配置备份
+- 跨设备同步（支持自建服务器、GitHub Gist、WebDAV）
+- 端到端加密（AES-256-GCM）
+
+## 下载
+
+| 平台 | 下载链接 |
+|------|----------|
+| Windows | [API-Key-Switcher.exe](https://github.com/AXONAI9000/AI9000/releases/download/api-key-switcher-latest/API-Key-Switcher.exe) |
+
+## 项目结构
+
+```
+├── client/              # Electron 桌面客户端
+│   ├── src/
+│   │   ├── cli/         # 命令行工具
+│   │   ├── main/        # Electron 主进程
+│   │   ├── renderer/    # React UI
+│   │   └── shared/      # 共享代码
+│   └── package.json
+│
+└── server/              # 同步服务器
+    ├── src/             # .NET 10 源码
+    └── docker-compose.yml
+```
+
+## 快速开始
 
 ### 客户端
 
-| 工具 | 描述 | 技术栈 | 下载 |
-|------|------|--------|------|
-| [api-key-switcher](tools/api-key-switcher) | 多 AI 服务商 API Key 管理与切换 | Electron + React | [Windows exe](https://github.com/AXONAI9000/AI9000/releases/download/api-key-switcher-latest/API-Key-Switcher.exe) |
+```bash
+cd client
+npm install
+npm run dev
+```
 
-### 服务端
+### 同步服务器（可选）
 
-| 工具 | 描述 | 技术栈 | 部署方式 |
-|------|------|--------|----------|
-| [api-key-sync-server](tools/api-key-sync-server) | API Key 配置同步服务器（零知识存储） | .NET 10 | [Docker](tools/api-key-sync-server#docker-部署) |
+```bash
+cd server
+export SYNC_TOKEN="your-secure-token"
+docker-compose up -d
+```
 
-## 添加新工具
+## 文档
 
-1. 在 `tools/` 下创建工具目录
-2. 添加完整的 README.md（参考 [模板](templates/TOOL_README_TEMPLATE.md)）
-3. 更新上方工具列表
+- [客户端详细文档](client/README.md)
+- [服务器 API 文档](server/README.md)
+- [同步功能使用指南](docs/sync-guide.md)
+- [安全说明](docs/security.md)
 
 ## License
 

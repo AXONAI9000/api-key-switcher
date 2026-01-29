@@ -157,7 +157,7 @@ MIT
 ### 部署同步服务器
 
 ```bash
-cd ../api-key-sync-server
+cd ../server
 
 # 设置访问令牌
 export SYNC_TOKEN="your-secure-token"

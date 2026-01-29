@@ -4,13 +4,13 @@ on:
   push:
     branches: [master]
     paths:
-      - 'tools/api-key-switcher/**'
+      - 'client/**'
     tags:
       - 'v*.*.*'
   pull_request:
     branches: [master]
     paths:
-      - 'tools/api-key-switcher/**'
+      - 'client/**'
 
 permissions:
   contents: write
@@ -21,7 +21,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: tools/api-key-switcher
+        working-directory: client
 
     steps:
       - name: Checkout code
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: tools/api-key-switcher/package-lock.json
+          cache-dependency-path: client/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: API-Key-Switcher-Windows-${{ steps.version.outputs.version }}
-          path: tools/api-key-switcher/release/*.exe
+          path: client/release/*.exe
 
       - name: Update Latest Release (Dev Build)
         if: github.ref == 'refs/heads/master' && steps.version.outputs.is_release == 'false'
@@ -82,7 +82,7 @@ jobs:
             - 构建时间: ${{ github.event.head_commit.timestamp }}
             - 提交: ${{ github.sha }}
             - 提交信息: ${{ github.event.head_commit.message }}
-          files: tools/api-key-switcher/release/*.exe
+          files: client/release/*.exe
           draft: false
           prerelease: true
         env:
@@ -106,7 +106,7 @@ jobs:
             ### 🔗 相关链接
             - [完整更新日志](https://github.com/${{ github.repository }}/releases)
             - [问题反馈](https://github.com/${{ github.repository }}/issues)
-          files: tools/api-key-switcher/release/*.exe
+          files: client/release/*.exe
           draft: false
           prerelease: false
         env:
