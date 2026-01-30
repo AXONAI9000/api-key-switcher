@@ -9,6 +9,7 @@ interface KeyCardProps {
   onSwitch: () => void;
   onToggle: () => void;
   onRemove: () => void;
+  onEdit: () => void;
   isSwitching?: boolean;
   isToggling?: boolean;
   isRemoving?: boolean;
@@ -36,6 +37,7 @@ const KeyCard: React.FC<KeyCardProps> = ({
   onSwitch,
   onToggle,
   onRemove,
+  onEdit,
   isSwitching = false,
   isToggling = false,
   isRemoving = false,
@@ -256,6 +258,17 @@ const KeyCard: React.FC<KeyCardProps> = ({
               title={enabled ? '禁用' : '启用'}
             >
               {isToggling ? <Spinner /> : (enabled ? '禁用' : '启用')}
+            </button>
+
+            <button
+              onClick={onEdit}
+              disabled={isLoading}
+              className="btn btn-secondary py-1.5 px-3 text-sm min-w-[60px] min-h-[36px] flex items-center justify-center cursor-pointer"
+              title="编辑"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
             </button>
 
             <button

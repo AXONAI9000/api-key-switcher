@@ -25,6 +25,7 @@ interface ProviderPanelProps {
   onRemoveKey: (alias: string) => void;
   onSwitchKey: (alias: string) => void;
   onToggleKey: (alias: string) => void;
+  onEditKey: (alias: string) => void;
   onReorderKeys: (aliases: string[]) => void;
   isSwitching: string | null;
   isToggling: string | null;
@@ -40,6 +41,7 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
   onRemoveKey,
   onSwitchKey,
   onToggleKey,
+  onEditKey,
   onReorderKeys,
   isSwitching,
   isToggling,
@@ -190,6 +192,7 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
                   onSwitch={() => onSwitchKey(key.alias)}
                   onToggle={() => onToggleKey(key.alias)}
                   onRemove={() => onRemoveKey(key.alias)}
+                  onEdit={() => onEditKey(key.alias)}
                   isSwitching={isSwitching === key.alias}
                   isToggling={isToggling === key.alias}
                   isRemoving={isRemoving === key.alias}

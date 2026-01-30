@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ProviderType, ProviderInfo, BASE_URL_ENV_MAP } from '../../shared/types';
 
-interface AddKeyModalProps {
+interface KeyFormModalProps {
+  mode: 'add' | 'edit';
   provider: ProviderType;
   providerInfo: ProviderInfo;
   onClose: () => void;
-  onAdd: (key: string, alias: string, baseUrl?: string) => void;
+  onSubmit: (key: string, alias: string, baseUrl?: string) => void;
   isLoading?: boolean;
+  initialData?: {
+    key: string;
+    alias: string;
+    baseUrl?: string;
+  };
 }
 
 // Loading spinner component
@@ -17,21 +23,25 @@ const Spinner: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) =>
   </svg>
 );
 
-const AddKeyModal: React.FC<AddKeyModalProps> = ({
+const KeyFormModal: React.FC<KeyFormModalProps> = ({
+  mode,
   provider,
   providerInfo,
   onClose,
-  onAdd,
+  onSubmit,
   isLoading = false,
+  initialData,
 }) => {
-  const [key, setKey] = useState('');
-  const [alias, setAlias] = useState('');
-  const [baseUrl, setBaseUrl] = useState('');
+  const [key, setKey] = useState(initialData?.key || '');
+  const [alias, setAlias] = useState(initialData?.alias || '');
+  const [baseUrl, setBaseUrl] = useState(initialData?.baseUrl || '');
   const [showKey, setShowKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
+
+  const isEditMode = mode === 'edit';
 
   // Focus the key input on mount
   useEffect(() => {
@@ -98,7 +108,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
       return;
     }
 
-    onAdd(trimmedKey, alias.trim() || undefined!, baseUrl.trim() || undefined);
+    onSubmit(trimmedKey, alias.trim() || undefined!, baseUrl.trim() || undefined);
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -124,7 +134,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
         {/* 头部 */}
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h2 id="modal-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-            添加 {providerInfo.name} Key
+            {isEditMode ? '编辑' : '添加'} {providerInfo.name} Key
           </h2>
           <button
             onClick={onClose}
@@ -232,7 +242,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
             {/* 别名输入 */}
             <div>
               <label htmlFor="alias" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                别名 (可选)
+                别名 {isEditMode ? '' : '(可选)'}
               </label>
               <input
                 id="alias"
@@ -241,10 +251,10 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                 onChange={(e) => setAlias(e.target.value)}
                 placeholder="例如: 主账号、代理服务"
                 className="input"
-                disabled={isLoading}
+                disabled={isLoading || isEditMode}
               />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                用于标识和区分不同的 Key，留空将自动生成
+                {isEditMode ? '别名不可修改' : '用于标识和区分不同的 Key，留空将自动生成'}
               </p>
             </div>
           </div>
@@ -261,7 +271,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
                 />
               </svg>
               <div className="text-sm text-blue-700 dark:text-blue-300">
-                <p>切换时将自动设置环境变量:</p>
+                <p>{isEditMode ? '保存后将自动更新环境变量:' : '切换时将自动设置环境变量:'}</p>
                 <code className="font-mono text-xs bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded block mt-1">
                   {providerInfo.envVar}
                 </code>
@@ -289,7 +299,7 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
               disabled={isLoading}
               className="btn btn-primary min-w-[80px] flex items-center justify-center"
             >
-              {isLoading ? <Spinner /> : '添加'}
+              {isLoading ? <Spinner /> : (isEditMode ? '保存' : '添加')}
             </button>
           </div>
         </form>
@@ -298,4 +308,4 @@ const AddKeyModal: React.FC<AddKeyModalProps> = ({
   );
 };
 
-export default AddKeyModal;
+export default KeyFormModal;

@@ -149,7 +149,7 @@ export function removeKey(provider: ProviderType, alias: string): boolean {
 export function updateKey(
   provider: ProviderType,
   alias: string,
-  updates: Partial<Pick<ApiKey, 'alias' | 'key' | 'enabled'>>
+  updates: Partial<Pick<ApiKey, 'alias' | 'key' | 'enabled' | 'extraEnvVars'>>
 ): ApiKey {
   const config = loadConfig();
 

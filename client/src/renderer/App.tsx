@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppConfig, ProviderType, DEFAULT_PROVIDERS, ActualEnvStatus } from '../shared/types';
+import { AppConfig, ProviderType, DEFAULT_PROVIDERS, ActualEnvStatus, ApiKey, BASE_URL_ENV_MAP } from '../shared/types';
 import ProviderPanel from './components/ProviderPanel';
-import AddKeyModal from './components/AddKeyModal';
+import KeyFormModal from './components/KeyFormModal';
 import Header from './components/Header';
 import StatusBar from './components/StatusBar';
 import { ToastProvider, useToast } from './components/Toast';
@@ -45,6 +45,7 @@ const AppContent: React.FC = () => {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderType>('claude');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
   const [showSyncSettings, setShowSyncSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +58,7 @@ const AppContent: React.FC = () => {
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Confirm modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -205,6 +207,49 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // 处理编辑 Key（打开编辑模态框）
+  const handleEditKey = (alias: string) => {
+    const key = config?.providers[selectedProvider].keys.find((k) => k.alias === alias);
+    if (key) {
+      setEditingKey(key);
+    }
+  };
+
+  // 处理更新 Key
+  const handleUpdateKey = async (key: string, alias: string, baseUrl?: string) => {
+    if (!editingKey) return;
+
+    setIsUpdating(true);
+    try {
+      // 构建 extraEnvVars
+      let extraEnvVars: Record<string, string> | undefined;
+      if (baseUrl) {
+        const baseUrlEnvName = BASE_URL_ENV_MAP[selectedProvider];
+        if (baseUrlEnvName) {
+          extraEnvVars = { [baseUrlEnvName]: baseUrl };
+        }
+      }
+
+      const response = await window.electronAPI.updateKey(selectedProvider, editingKey.alias, {
+        key,
+        extraEnvVars,
+      });
+
+      if (response.success) {
+        await loadConfig();
+        await loadActualEnvStatus(selectedProvider);
+        setEditingKey(null);
+        showToast('success', 'API Key 已更新');
+      } else {
+        showToast('error', response.error || '更新失败');
+      }
+    } catch (err) {
+      showToast('error', (err as Error).message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // 处理重排序
   const handleReorderKeys = async (aliases: string[]) => {
     try {
@@ -319,6 +364,7 @@ const AppContent: React.FC = () => {
             onRemoveKey={handleRemoveKey}
             onSwitchKey={handleSwitchKey}
             onToggleKey={handleToggleKey}
+            onEditKey={handleEditKey}
             onReorderKeys={handleReorderKeys}
             isSwitching={isSwitching}
             isToggling={isToggling}
@@ -329,12 +375,30 @@ const AppContent: React.FC = () => {
 
       {/* 添加 Key 弹窗 */}
       {showAddModal && (
-        <AddKeyModal
+        <KeyFormModal
+          mode="add"
           provider={selectedProvider}
           providerInfo={DEFAULT_PROVIDERS[selectedProvider]}
           onClose={() => setShowAddModal(false)}
-          onAdd={handleAddKey}
+          onSubmit={handleAddKey}
           isLoading={isAdding}
+        />
+      )}
+
+      {/* 编辑 Key 弹窗 */}
+      {editingKey && (
+        <KeyFormModal
+          mode="edit"
+          provider={selectedProvider}
+          providerInfo={DEFAULT_PROVIDERS[selectedProvider]}
+          onClose={() => setEditingKey(null)}
+          onSubmit={handleUpdateKey}
+          isLoading={isUpdating}
+          initialData={{
+            key: editingKey.key,
+            alias: editingKey.alias,
+            baseUrl: editingKey.extraEnvVars ? Object.values(editingKey.extraEnvVars)[0] : undefined,
+          }}
         />
       )}
 

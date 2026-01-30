@@ -286,11 +286,35 @@ function setupIpcHandlers(): void {
       _,
       provider: ProviderType,
       alias: string,
-      updates: Partial<Pick<ApiKey, 'alias' | 'key' | 'enabled'>>
+      updates: Partial<Pick<ApiKey, 'alias' | 'key' | 'enabled' | 'extraEnvVars'>>
     ): IpcResponse<ApiKey> => {
       try {
+        const config = loadConfig();
+        const isCurrent = config.providers[provider].currentKey === alias;
+
         const updatedKey = updateKey(provider, alias, updates);
         updateTrayMenu();
+
+        // 如果编辑的是当前使用的 Key，自动更新环境变量
+        if (isCurrent) {
+          const appliedVars: Record<string, string> = {};
+          const envVarName = config.providers[provider].envVar;
+
+          // 主 API Key
+          appliedVars[envVarName] = updatedKey.key;
+
+          // 额外的环境变量（如 BASE_URL）
+          if (updatedKey.extraEnvVars) {
+            for (const [varName, varValue] of Object.entries(updatedKey.extraEnvVars)) {
+              appliedVars[varName] = varValue;
+            }
+          }
+
+          // 批量设置环境变量
+          const { setUserEnvVarsBatch } = require('../shared/config-manager');
+          setUserEnvVarsBatch(appliedVars);
+        }
+
         return { success: true, data: updatedKey };
       } catch (error) {
         return { success: false, error: (error as Error).message };
