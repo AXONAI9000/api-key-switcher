@@ -21,6 +21,34 @@ import { authService } from '../auth-service';
 // HTTP 请求超时（毫秒）
 const REQUEST_TIMEOUT = 30000;
 
+// 重试配置
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1秒
+const MAX_RETRY_DELAY = 8000; // 8秒
+
+/**
+ * 延迟执行
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * 计算指数退避延迟
+ */
+function getRetryDelay(attempt: number): number {
+  const delayMs = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
+  return Math.min(delayMs, MAX_RETRY_DELAY);
+}
+
+/**
+ * 判断是否应该重试
+ */
+function shouldRetry(status: number): boolean {
+  // 5xx 服务器错误、408 超时、429 限流 可以重试
+  return status >= 500 || status === 408 || status === 429;
+}
+
 /**
  * HTTP 响应接口
  */
@@ -97,7 +125,7 @@ export class ServerSyncBackend extends BaseSyncBackend {
   }
 
   /**
-   * 发送 HTTP 请求
+   * 发送 HTTP 请求（带重试）
    */
   private async request<T>(
     method: string,
@@ -105,52 +133,74 @@ export class ServerSyncBackend extends BaseSyncBackend {
     body?: unknown
   ): Promise<HttpResponse<T>> {
     const url = `${this.baseUrl}${path}`;
+    let lastError: Error | null = null;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-    try {
-      const headers = await this.getAuthHeaders();
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
-      });
+      try {
+        const headers = await this.getAuthHeaders();
+        const response = await fetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      let data: T | undefined;
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        try {
-          data = await response.json() as T;
-        } catch {
-          // JSON 解析失败，忽略
+        // 如果是可重试的错误且还有重试次数
+        if (!response.ok && shouldRetry(response.status) && attempt < MAX_RETRIES) {
+          const retryDelay = getRetryDelay(attempt);
+          console.log(`Request failed with ${response.status}, retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await delay(retryDelay);
+          continue;
+        }
+
+        let data: T | undefined;
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          try {
+            data = await response.json() as T;
+          } catch {
+            // JSON 解析失败，忽略
+          }
+        }
+
+        return {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          data,
+        };
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof BackendAuthError) {
+          throw error;
+        }
+
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+
+        // 网络错误可以重试
+        if (attempt < MAX_RETRIES) {
+          const retryDelay = getRetryDelay(attempt);
+          console.log(`Network error: ${lastError.message}, retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await delay(retryDelay);
+          continue;
         }
       }
-
-      return {
-        ok: response.ok,
-        status: response.status,
-        statusText: response.statusText,
-        data,
-      };
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof BackendAuthError) {
-        throw error;
-      }
-
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw new BackendConnectionError('Request timeout', this.type);
-        }
-        throw new BackendConnectionError(error.message, this.type);
-      }
-      throw new BackendConnectionError('Unknown error', this.type);
     }
+
+    // 所有重试都失败
+    if (lastError?.name === 'AbortError') {
+      throw new BackendConnectionError('Request timeout after retries', this.type);
+    }
+    throw new BackendConnectionError(
+      lastError?.message || 'Request failed after retries',
+      this.type
+    );
   }
 
   /**
