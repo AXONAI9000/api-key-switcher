@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import { execSync, spawn } from 'child_process';
@@ -42,6 +43,15 @@ function ensureConfigDir(): void {
   }
 }
 
+// 异步确保配置目录存在
+async function ensureConfigDirAsync(): Promise<void> {
+  try {
+    await fsPromises.access(CONFIG_DIR);
+  } catch {
+    await fsPromises.mkdir(CONFIG_DIR, { recursive: true });
+  }
+}
+
 // 读取配置
 export function loadConfig(): AppConfig {
   ensureConfigDir();
@@ -73,10 +83,61 @@ export function loadConfig(): AppConfig {
   }
 }
 
+// 异步读取配置
+export async function loadConfigAsync(): Promise<AppConfig> {
+  await ensureConfigDirAsync();
+
+  try {
+    const content = await fsPromises.readFile(CONFIG_FILE, 'utf-8');
+    const config = JSON.parse(content) as AppConfig;
+
+    for (const [id, info] of Object.entries(DEFAULT_PROVIDERS)) {
+      if (!config.providers[id as ProviderType]) {
+        config.providers[id as ProviderType] = {
+          envVar: info.envVar,
+          currentKey: null,
+          keys: [],
+        };
+      }
+    }
+
+    return config;
+  } catch (error) {
+    // 文件不存在，创建默认配置
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      const defaultConfig = createDefaultConfig();
+      await saveConfigAsync(defaultConfig);
+      return defaultConfig;
+    }
+    console.error('Failed to load config:', error);
+    return createDefaultConfig();
+  }
+}
+
 // 保存配置
 export function saveConfig(config: AppConfig): void {
   ensureConfigDir();
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+// 异步保存配置（带备份）
+export async function saveConfigAsync(config: AppConfig): Promise<void> {
+  await ensureConfigDirAsync();
+
+  // 创建备份
+  try {
+    await fsPromises.access(CONFIG_FILE);
+    const backupFile = `${CONFIG_FILE}.backup`;
+    try {
+      await fsPromises.copyFile(CONFIG_FILE, backupFile);
+    } catch (backupError) {
+      console.warn('Failed to create backup:', backupError);
+    }
+  } catch {
+    // 文件不存在，无需备份
+  }
+
+  await fsPromises.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 
 
@@ -116,6 +177,47 @@ export function addKey(
   }
 
   saveConfig(config);
+  return newKey;
+}
+
+// 异步添加 Key
+export async function addKeyAsync(
+  provider: ProviderType,
+  key: string,
+  alias?: string,
+  extraEnvVars?: Record<string, string>
+): Promise<ApiKey> {
+  const config = await loadConfigAsync();
+
+  if (!config.providers[provider]) {
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+
+  const finalAlias =
+    alias || `key-${config.providers[provider].keys.length + 1}`;
+
+  const existingKey = config.providers[provider].keys.find(
+    (k) => k.alias === finalAlias
+  );
+  if (existingKey) {
+    throw new Error(`Key with alias "${finalAlias}" already exists`);
+  }
+
+  const newKey: ApiKey = {
+    alias: finalAlias,
+    key,
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    extraEnvVars,
+  };
+
+  config.providers[provider].keys.push(newKey);
+
+  if (config.providers[provider].keys.length === 1) {
+    config.providers[provider].currentKey = finalAlias;
+  }
+
+  await saveConfigAsync(config);
   return newKey;
 }
 
@@ -475,6 +577,45 @@ export function switchKeyAndApply(provider: ProviderType, alias: string): {
   }
 
   // 批量设置所有环境变量
+  setUserEnvVarsBatch(appliedVars);
+
+  return { success: true, appliedVars };
+}
+
+// 异步切换 Key 并应用环境变量
+export async function switchKeyAndApplyAsync(provider: ProviderType, alias: string): Promise<{
+  success: boolean;
+  appliedVars: Record<string, string>;
+}> {
+  const config = await loadConfigAsync();
+
+  if (!config.providers[provider]) {
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+
+  const key = config.providers[provider].keys.find((k) => k.alias === alias);
+  if (!key) {
+    throw new Error(`Key with alias "${alias}" not found`);
+  }
+
+  if (!key.enabled) {
+    throw new Error(`Key "${alias}" is disabled`);
+  }
+
+  config.providers[provider].currentKey = alias;
+  await saveConfigAsync(config);
+
+  const appliedVars: Record<string, string> = {};
+  const envVarName = config.providers[provider].envVar;
+
+  appliedVars[envVarName] = key.key;
+
+  if (key.extraEnvVars) {
+    for (const [varName, varValue] of Object.entries(key.extraEnvVars)) {
+      appliedVars[varName] = varValue;
+    }
+  }
+
   setUserEnvVarsBatch(appliedVars);
 
   return { success: true, appliedVars };
