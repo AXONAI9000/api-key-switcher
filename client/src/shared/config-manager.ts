@@ -36,6 +36,56 @@ function createDefaultConfig(): AppConfig {
   };
 }
 
+/**
+ * 验证 provider 是否存在
+ */
+function validateProvider(config: AppConfig, provider: ProviderType): void {
+  if (!config.providers[provider]) {
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+}
+
+/**
+ * 验证 key 是否存在并返回
+ */
+function findKeyOrThrow(config: AppConfig, provider: ProviderType, alias: string): ApiKey {
+  const key = config.providers[provider].keys.find((k) => k.alias === alias);
+  if (!key) {
+    throw new Error(`Key with alias "${alias}" not found`);
+  }
+  return key;
+}
+
+/**
+ * 验证 alias 是否已存在
+ */
+function validateAliasNotExists(config: AppConfig, provider: ProviderType, alias: string): void {
+  const existingKey = config.providers[provider].keys.find((k) => k.alias === alias);
+  if (existingKey) {
+    throw new Error(`Key with alias "${alias}" already exists`);
+  }
+}
+
+/**
+ * 生成默认 alias
+ */
+function generateDefaultAlias(config: AppConfig, provider: ProviderType, customAlias?: string): string {
+  return customAlias || `key-${config.providers[provider].keys.length + 1}`;
+}
+
+/**
+ * 创建新的 ApiKey 对象
+ */
+function createApiKey(alias: string, key: string, extraEnvVars?: Record<string, string>): ApiKey {
+  return {
+    alias,
+    key,
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    extraEnvVars,
+  };
+}
+
 // 确保配置目录存在
 function ensureConfigDir(): void {
   if (!fs.existsSync(CONFIG_DIR)) {
@@ -141,35 +191,20 @@ export async function saveConfigAsync(config: AppConfig): Promise<void> {
 }
 
 
-// 添加 Key
+// 添加 Key（支持额外环境变量）
 export function addKey(
   provider: ProviderType,
   key: string,
-  alias?: string
+  alias?: string,
+  extraEnvVars?: Record<string, string>
 ): ApiKey {
   const config = loadConfig();
+  validateProvider(config, provider);
 
-  if (!config.providers[provider]) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
+  const finalAlias = generateDefaultAlias(config, provider, alias);
+  validateAliasNotExists(config, provider, finalAlias);
 
-  const finalAlias =
-    alias || `key-${config.providers[provider].keys.length + 1}`;
-
-  const existingKey = config.providers[provider].keys.find(
-    (k) => k.alias === finalAlias
-  );
-  if (existingKey) {
-    throw new Error(`Key with alias "${finalAlias}" already exists`);
-  }
-
-  const newKey: ApiKey = {
-    alias: finalAlias,
-    key,
-    enabled: true,
-    createdAt: new Date().toISOString(),
-  };
-
+  const newKey = createApiKey(finalAlias, key, extraEnvVars);
   config.providers[provider].keys.push(newKey);
 
   if (config.providers[provider].keys.length === 1) {
@@ -188,29 +223,12 @@ export async function addKeyAsync(
   extraEnvVars?: Record<string, string>
 ): Promise<ApiKey> {
   const config = await loadConfigAsync();
+  validateProvider(config, provider);
 
-  if (!config.providers[provider]) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
+  const finalAlias = generateDefaultAlias(config, provider, alias);
+  validateAliasNotExists(config, provider, finalAlias);
 
-  const finalAlias =
-    alias || `key-${config.providers[provider].keys.length + 1}`;
-
-  const existingKey = config.providers[provider].keys.find(
-    (k) => k.alias === finalAlias
-  );
-  if (existingKey) {
-    throw new Error(`Key with alias "${finalAlias}" already exists`);
-  }
-
-  const newKey: ApiKey = {
-    alias: finalAlias,
-    key,
-    enabled: true,
-    createdAt: new Date().toISOString(),
-    extraEnvVars,
-  };
-
+  const newKey = createApiKey(finalAlias, key, extraEnvVars);
   config.providers[provider].keys.push(newKey);
 
   if (config.providers[provider].keys.length === 1) {
@@ -324,15 +342,9 @@ export function toggleKey(
 // 切换当前使用的 Key
 export function switchKey(provider: ProviderType, alias: string): boolean {
   const config = loadConfig();
+  validateProvider(config, provider);
 
-  if (!config.providers[provider]) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
-
-  const key = config.providers[provider].keys.find((k) => k.alias === alias);
-  if (!key) {
-    throw new Error(`Key with alias "${alias}" not found`);
-  }
+  const key = findKeyOrThrow(config, provider, alias);
 
   if (!key.enabled) {
     throw new Error(`Key "${alias}" is disabled`);
@@ -544,15 +556,9 @@ export function switchKeyAndApply(provider: ProviderType, alias: string): {
   appliedVars: Record<string, string>;
 } {
   const config = loadConfig();
+  validateProvider(config, provider);
 
-  if (!config.providers[provider]) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
-
-  const key = config.providers[provider].keys.find((k) => k.alias === alias);
-  if (!key) {
-    throw new Error(`Key with alias "${alias}" not found`);
-  }
+  const key = findKeyOrThrow(config, provider, alias);
 
   if (!key.enabled) {
     throw new Error(`Key "${alias}" is disabled`);
@@ -563,18 +569,10 @@ export function switchKeyAndApply(provider: ProviderType, alias: string): {
   saveConfig(config);
 
   // 收集所有需要设置的环境变量
-  const appliedVars: Record<string, string> = {};
-  const envVarName = config.providers[provider].envVar;
-
-  // 主 API Key
-  appliedVars[envVarName] = key.key;
-
-  // 额外的环境变量
-  if (key.extraEnvVars) {
-    for (const [varName, varValue] of Object.entries(key.extraEnvVars)) {
-      appliedVars[varName] = varValue;
-    }
-  }
+  const appliedVars: Record<string, string> = {
+    [config.providers[provider].envVar]: key.key,
+    ...key.extraEnvVars,
+  };
 
   // 批量设置所有环境变量
   setUserEnvVarsBatch(appliedVars);
@@ -588,15 +586,9 @@ export async function switchKeyAndApplyAsync(provider: ProviderType, alias: stri
   appliedVars: Record<string, string>;
 }> {
   const config = await loadConfigAsync();
+  validateProvider(config, provider);
 
-  if (!config.providers[provider]) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
-
-  const key = config.providers[provider].keys.find((k) => k.alias === alias);
-  if (!key) {
-    throw new Error(`Key with alias "${alias}" not found`);
-  }
+  const key = findKeyOrThrow(config, provider, alias);
 
   if (!key.enabled) {
     throw new Error(`Key "${alias}" is disabled`);
@@ -605,62 +597,19 @@ export async function switchKeyAndApplyAsync(provider: ProviderType, alias: stri
   config.providers[provider].currentKey = alias;
   await saveConfigAsync(config);
 
-  const appliedVars: Record<string, string> = {};
-  const envVarName = config.providers[provider].envVar;
-
-  appliedVars[envVarName] = key.key;
-
-  if (key.extraEnvVars) {
-    for (const [varName, varValue] of Object.entries(key.extraEnvVars)) {
-      appliedVars[varName] = varValue;
-    }
-  }
+  // 收集所有需要设置的环境变量
+  const appliedVars: Record<string, string> = {
+    [config.providers[provider].envVar]: key.key,
+    ...key.extraEnvVars,
+  };
 
   setUserEnvVarsBatch(appliedVars);
 
   return { success: true, appliedVars };
 }
 
-// 添加带额外环境变量的 Key
-export function addKeyWithExtras(
-  provider: ProviderType,
-  key: string,
-  alias?: string,
-  extraEnvVars?: Record<string, string>
-): ApiKey {
-  const config = loadConfig();
-
-  if (!config.providers[provider]) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
-
-  const finalAlias =
-    alias || `key-${config.providers[provider].keys.length + 1}`;
-
-  const existingKey = config.providers[provider].keys.find(
-    (k) => k.alias === finalAlias
-  );
-  if (existingKey) {
-    throw new Error(`Key with alias "${finalAlias}" already exists`);
-  }
-
-  const newKey: ApiKey = {
-    alias: finalAlias,
-    key,
-    enabled: true,
-    createdAt: new Date().toISOString(),
-    extraEnvVars,
-  };
-
-  config.providers[provider].keys.push(newKey);
-
-  if (config.providers[provider].keys.length === 1) {
-    config.providers[provider].currentKey = finalAlias;
-  }
-
-  saveConfig(config);
-  return newKey;
-}
+// 保留别名以保持向后兼容
+export const addKeyWithExtras = addKey;
 
 // 获取完整的 Key 信息（包含额外环境变量）
 export function getFullKeyInfo(provider: ProviderType, alias: string): ApiKey | null {
