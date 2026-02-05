@@ -14,6 +14,41 @@ import {
 // 配置文件路径
 const CONFIG_DIR = path.join(os.homedir(), '.api-key-switcher');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+const CONFIG_BACKUP_FILE = path.join(CONFIG_DIR, 'config.json.backup');
+const MAX_BACKUP_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7天
+
+/**
+ * 创建配置备份
+ */
+function createBackup(): void {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      fs.copyFileSync(CONFIG_FILE, CONFIG_BACKUP_FILE);
+    }
+  } catch (error) {
+    console.error('Failed to create config backup:', error);
+  }
+}
+
+/**
+ * 从备份恢复配置
+ */
+export function restoreFromBackup(): AppConfig | null {
+  try {
+    if (fs.existsSync(CONFIG_BACKUP_FILE)) {
+      const stats = fs.statSync(CONFIG_BACKUP_FILE);
+      const age = Date.now() - stats.mtimeMs;
+
+      if (age < MAX_BACKUP_AGE_MS) {
+        const content = fs.readFileSync(CONFIG_BACKUP_FILE, 'utf-8');
+        return JSON.parse(content) as AppConfig;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to restore from backup:', error);
+  }
+  return null;
+}
 
 // 创建默认配置
 function createDefaultConfig(): AppConfig {
@@ -164,9 +199,10 @@ export async function loadConfigAsync(): Promise<AppConfig> {
   }
 }
 
-// 保存配置
+// 保存配置（带备份）
 export function saveConfig(config: AppConfig): void {
   ensureConfigDir();
+  createBackup();
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 
@@ -177,11 +213,10 @@ export async function saveConfigAsync(config: AppConfig): Promise<void> {
   // 创建备份
   try {
     await fsPromises.access(CONFIG_FILE);
-    const backupFile = `${CONFIG_FILE}.backup`;
     try {
-      await fsPromises.copyFile(CONFIG_FILE, backupFile);
+      await fsPromises.copyFile(CONFIG_FILE, CONFIG_BACKUP_FILE);
     } catch (backupError) {
-      console.warn('Failed to create backup:', backupError);
+      console.error('Failed to create backup:', backupError);
     }
   } catch {
     // 文件不存在，无需备份
