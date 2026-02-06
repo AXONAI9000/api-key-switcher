@@ -10,6 +10,7 @@ import {
   ProviderType,
   DEFAULT_PROVIDERS,
 } from './types';
+import { getConfigCache } from './config-cache';
 
 // 配置文件路径
 const CONFIG_DIR = path.join(os.homedir(), '.api-key-switcher');
@@ -139,33 +140,7 @@ async function ensureConfigDirAsync(): Promise<void> {
 
 // 读取配置
 export function loadConfig(): AppConfig {
-  ensureConfigDir();
-
-  if (!fs.existsSync(CONFIG_FILE)) {
-    const defaultConfig = createDefaultConfig();
-    saveConfig(defaultConfig);
-    return defaultConfig;
-  }
-
-  try {
-    const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
-    const config = JSON.parse(content) as AppConfig;
-
-    for (const [id, info] of Object.entries(DEFAULT_PROVIDERS)) {
-      if (!config.providers[id as ProviderType]) {
-        config.providers[id as ProviderType] = {
-          envVar: info.envVar,
-          currentKey: null,
-          keys: [],
-        };
-      }
-    }
-
-    return config;
-  } catch (error) {
-    console.error('Failed to load config:', error);
-    return createDefaultConfig();
-  }
+  return getConfigCache().get();
 }
 
 // 异步读取配置
@@ -201,9 +176,7 @@ export async function loadConfigAsync(): Promise<AppConfig> {
 
 // 保存配置（带备份）
 export function saveConfig(config: AppConfig): void {
-  ensureConfigDir();
-  createBackup();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  getConfigCache().set(config);
 }
 
 // 异步保存配置（带备份）

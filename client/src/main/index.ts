@@ -364,6 +364,62 @@ function setupIpcHandlers(): void {
     }
   );
 
+  // 验证 Key 有效性
+  ipcMain.handle(
+    IPC_CHANNELS.VALIDATE_KEY,
+    async (_event, provider: ProviderType, key: string, baseUrl?: string): Promise<IpcResponse> => {
+      try {
+        const { validateApiKey } = await import('../shared/key-validator');
+        const result = await validateApiKey(provider, key, baseUrl);
+        return { success: true, data: result };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 获取 Key 统计
+  ipcMain.handle(
+    IPC_CHANNELS.GET_KEY_STATS,
+    async (_event, provider: ProviderType): Promise<IpcResponse> => {
+      try {
+        const { getStats } = await import('../shared/usage-tracker');
+        const stats = getStats(provider);
+        return { success: true, data: stats };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 设置 Key 过期时间
+  ipcMain.handle(
+    IPC_CHANNELS.SET_KEY_EXPIRY,
+    async (_event, provider: ProviderType, alias: string, expiresAt: string): Promise<IpcResponse> => {
+      try {
+        const { setExpiry } = await import('../shared/usage-tracker');
+        setExpiry(provider, alias, expiresAt);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // 清除 Key 过期时间
+  ipcMain.handle(
+    IPC_CHANNELS.CLEAR_KEY_EXPIRY,
+    async (_event, provider: ProviderType, alias: string): Promise<IpcResponse> => {
+      try {
+        const { clearExpiry } = await import('../shared/usage-tracker');
+        clearExpiry(provider, alias);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
   // 获取当前环境变量值
   ipcMain.handle(
     IPC_CHANNELS.GET_CURRENT_ENV,

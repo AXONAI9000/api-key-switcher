@@ -12,6 +12,10 @@ const IPC_CHANNELS = {
   TOGGLE_KEY: 'key:toggle',
   SWITCH_KEY: 'key:switch',
   REORDER_KEYS: 'key:reorder',
+  VALIDATE_KEY: 'key:validate',
+  GET_KEY_STATS: 'key:get-stats',
+  SET_KEY_EXPIRY: 'key:set-expiry',
+  CLEAR_KEY_EXPIRY: 'key:clear-expiry',
   SET_ENV_VAR: 'env:set',
   GET_CURRENT_ENV: 'env:get-current',
   GET_ACTUAL_ENV: 'env:get-actual',
@@ -53,6 +57,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC_CHANNELS.SWITCH_KEY, provider, alias),
   reorderKeys: (provider: string, aliases: string[]) =>
     ipcRenderer.invoke(IPC_CHANNELS.REORDER_KEYS, provider, aliases),
+  validateKey: (provider: string, key: string, baseUrl?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.VALIDATE_KEY, provider, key, baseUrl),
+  getKeyStats: (provider: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_KEY_STATS, provider),
+  setKeyExpiry: (provider: string, alias: string, expiresAt: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SET_KEY_EXPIRY, provider, alias, expiresAt),
+  clearKeyExpiry: (provider: string, alias: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLEAR_KEY_EXPIRY, provider, alias),
 
   // 环境变量
   getCurrentEnv: (provider: string) =>
