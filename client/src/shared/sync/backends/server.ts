@@ -18,47 +18,6 @@ import {
 } from './base';
 import { authService } from '../auth-service';
 
-// HTTP 请求超时（毫秒）
-const REQUEST_TIMEOUT = 30000;
-
-// 重试配置
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000; // 1秒
-const MAX_RETRY_DELAY = 8000; // 8秒
-
-/**
- * 延迟执行
- */
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * 计算指数退避延迟
- */
-function getRetryDelay(attempt: number): number {
-  const delayMs = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-  return Math.min(delayMs, MAX_RETRY_DELAY);
-}
-
-/**
- * 判断是否应该重试
- */
-function shouldRetry(status: number): boolean {
-  // 5xx 服务器错误、408 超时、429 限流 可以重试
-  return status >= 500 || status === 408 || status === 429;
-}
-
-/**
- * HTTP 响应接口
- */
-interface HttpResponse<T = unknown> {
-  ok: boolean;
-  status: number;
-  statusText: string;
-  data?: T;
-}
-
 /**
  * 服务器状态响应
  */
@@ -112,7 +71,7 @@ export class ServerSyncBackend extends BaseSyncBackend {
   /**
    * 获取认证头
    */
-  private async getAuthHeaders(): Promise<Record<string, string>> {
+  protected async getRequestHeaders(): Promise<Record<string, string>> {
     const accessToken = await authService.getAccessToken();
     if (!accessToken) {
       throw new BackendAuthError('未登录，请先登录', this.type);
@@ -122,85 +81,6 @@ export class ServerSyncBackend extends BaseSyncBackend {
       'X-Device-Id': this.deviceId,
       'Content-Type': 'application/json',
     };
-  }
-
-  /**
-   * 发送 HTTP 请求（带重试）
-   */
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown
-  ): Promise<HttpResponse<T>> {
-    const url = `${this.baseUrl}${path}`;
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-      try {
-        const headers = await this.getAuthHeaders();
-        const response = await fetch(url, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // 如果是可重试的错误且还有重试次数
-        if (!response.ok && shouldRetry(response.status) && attempt < MAX_RETRIES) {
-          const retryDelay = getRetryDelay(attempt);
-          console.log(`Request failed with ${response.status}, retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-          await delay(retryDelay);
-          continue;
-        }
-
-        let data: T | undefined;
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          try {
-            data = await response.json() as T;
-          } catch {
-            // JSON 解析失败，忽略
-          }
-        }
-
-        return {
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText,
-          data,
-        };
-      } catch (error) {
-        clearTimeout(timeoutId);
-
-        if (error instanceof BackendAuthError) {
-          throw error;
-        }
-
-        lastError = error instanceof Error ? error : new Error('Unknown error');
-
-        // 网络错误可以重试
-        if (attempt < MAX_RETRIES) {
-          const retryDelay = getRetryDelay(attempt);
-          console.log(`Network error: ${lastError.message}, retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-          await delay(retryDelay);
-          continue;
-        }
-      }
-    }
-
-    // 所有重试都失败
-    if (lastError?.name === 'AbortError') {
-      throw new BackendConnectionError('Request timeout after retries', this.type);
-    }
-    throw new BackendConnectionError(
-      lastError?.message || 'Request failed after retries',
-      this.type
-    );
   }
 
   /**
@@ -221,9 +101,9 @@ export class ServerSyncBackend extends BaseSyncBackend {
 
     try {
       // 尝试获取状态来验证连接
-      const response = await this.request<ServerStatusResponse>(
+      const response = await this.fetchWithRetry<ServerStatusResponse>(
         'GET',
-        '/api/v1/sync/status'
+        `${this.baseUrl}/api/v1/sync/status`
       );
 
       if (response.status === 401) {
@@ -251,9 +131,9 @@ export class ServerSyncBackend extends BaseSyncBackend {
    */
   async getStatus(): Promise<ServerStatus> {
     try {
-      const response = await this.request<ServerStatusResponse>(
+      const response = await this.fetchWithRetry<ServerStatusResponse>(
         'GET',
-        '/api/v1/sync/status'
+        `${this.baseUrl}/api/v1/sync/status`
       );
 
       if (response.status === 401) {
@@ -291,9 +171,9 @@ export class ServerSyncBackend extends BaseSyncBackend {
    */
   async pull(): Promise<PullResult> {
     try {
-      const response = await this.request<ServerConfigResponse>(
+      const response = await this.fetchWithRetry<ServerConfigResponse>(
         'GET',
-        '/api/v1/sync/config'
+        `${this.baseUrl}/api/v1/sync/config`
       );
 
       if (response.status === 401) {
@@ -339,10 +219,10 @@ export class ServerSyncBackend extends BaseSyncBackend {
    */
   async push(data: EncryptedPackage): Promise<PushResult> {
     try {
-      const response = await this.request<ServerPushResponse>(
+      const response = await this.fetchWithRetry<ServerPushResponse>(
         'PUT',
-        '/api/v1/sync/config',
-        { data }
+        `${this.baseUrl}/api/v1/sync/config`,
+        { body: JSON.stringify({ data }) }
       );
 
       if (response.status === 401) {

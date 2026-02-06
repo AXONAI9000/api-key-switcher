@@ -24,6 +24,7 @@ import {
   getUserEnvVar,
   reorderKeys,
 } from '../shared/config-manager';
+import { getConfigCache } from '../shared/config-cache';
 import {
   IPC_CHANNELS,
   ProviderType,
@@ -602,6 +603,8 @@ function setupIpcHandlers(): void {
     IPC_CHANNELS.SYNC_PULL,
     async (): Promise<IpcResponse<SyncResult>> => {
       try {
+        // 同步前先 flush 缓存，确保磁盘数据是最新的
+        getConfigCache().flush();
         const localConfig = loadConfig();
         const result = await syncManager.pull(localConfig);
         return { success: result.success, data: result, error: result.error };
@@ -616,6 +619,8 @@ function setupIpcHandlers(): void {
     IPC_CHANNELS.SYNC_PUSH,
     async (): Promise<IpcResponse<SyncResult>> => {
       try {
+        // 同步前先 flush 缓存，确保推送的是最新数据
+        getConfigCache().flush();
         const localConfig = loadConfig();
         const result = await syncManager.push(localConfig);
         return { success: result.success, data: result, error: result.error };
@@ -630,11 +635,14 @@ function setupIpcHandlers(): void {
     IPC_CHANNELS.SYNC_EXECUTE,
     async (): Promise<IpcResponse<SyncResult>> => {
       try {
+        // 同步前先 flush 缓存，确保磁盘数据与内存一致
+        getConfigCache().flush();
         const localConfig = loadConfig();
         const result = await syncManager.sync(localConfig);
 
-        // 如果同步成功且有远程更新，通知渲染进程刷新
+        // 如果同步成功且有远程更新，invalidate 缓存并通知渲染进程刷新
         if (result.success) {
+          getConfigCache().invalidate();
           mainWindow?.webContents.send('config-updated');
         }
 
@@ -663,6 +671,8 @@ function setupIpcHandlers(): void {
     IPC_CHANNELS.SYNC_RESOLVE_CONFLICT,
     async (_, resolution: ConflictResolution): Promise<IpcResponse<AppConfig | null>> => {
       try {
+        // 冲突解决前先 flush 缓存
+        getConfigCache().flush();
         const localConfig = loadConfig();
         const result = await syncManager.resolveConflict(resolution, localConfig);
 
@@ -670,6 +680,8 @@ function setupIpcHandlers(): void {
           // 如果解决冲突后配置有变化，保存并通知
           if (resolution !== 'local') {
             saveConfig(result.config);
+            // 立即 flush 确保磁盘写入，然后 invalidate 让下次读取从磁盘加载
+            getConfigCache().flush();
             updateTrayMenu();
             mainWindow?.webContents.send('config-updated');
           }
@@ -715,10 +727,45 @@ function setupIpcHandlers(): void {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
   createTray();
   setupIpcHandlers();
+
+  // 每小时检查一次 Key 过期
+  const checkKeyExpiry = async () => {
+    try {
+      const { getExpiringKeys, getExpiredKeys } = await import('../shared/usage-tracker');
+      const expired = getExpiredKeys();
+      const expiring = getExpiringKeys();
+
+      if (expired.length > 0) {
+        const { Notification } = await import('electron');
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'API Key 已过期',
+            body: `${expired.map((k: any) => k.alias).join(', ')} 已过期，请及时更换`,
+          }).show();
+        }
+      }
+
+      if (expiring.length > 0) {
+        const { Notification } = await import('electron');
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'API Key 即将过期',
+            body: `${expiring.map((k: any) => k.alias).join(', ')} 将在 7 天内过期`,
+          }).show();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check key expiry:', error);
+    }
+  };
+
+  // 启动后延迟 5 分钟首次检查，之后每小时检查
+  setTimeout(checkKeyExpiry, 5 * 60 * 1000);
+  setInterval(checkKeyExpiry, 60 * 60 * 1000);
 });
 
 app.on('window-all-closed', () => {

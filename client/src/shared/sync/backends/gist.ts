@@ -20,9 +20,6 @@ import {
 // GitHub API 基础 URL
 const GITHUB_API_BASE = 'https://api.github.com';
 
-// 请求超时（毫秒）
-const REQUEST_TIMEOUT = 30000;
-
 // Gist 文件名
 const GIST_FILENAME = 'api-key-switcher-config.json';
 
@@ -77,7 +74,7 @@ export class GistSyncBackend extends BaseSyncBackend {
   /**
    * 获取认证头
    */
-  private get authHeaders(): Record<string, string> {
+  protected getRequestHeaders(): Record<string, string> {
     return {
       'Authorization': `Bearer ${this.config.token}`,
       'Accept': 'application/vnd.github+json',
@@ -87,58 +84,14 @@ export class GistSyncBackend extends BaseSyncBackend {
   }
 
   /**
-   * 发送 GitHub API 请求
-   */
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown
-  ): Promise<{ ok: boolean; status: number; data?: T }> {
-    const url = `${GITHUB_API_BASE}${path}`;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: this.authHeaders,
-        body: body ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      let data: T | undefined;
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        try {
-          data = await response.json() as T;
-        } catch {
-          // JSON 解析失败
-        }
-      }
-
-      return { ok: response.ok, status: response.status, data };
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw new BackendConnectionError('Request timeout', this.type);
-        }
-        throw new BackendConnectionError(error.message, this.type);
-      }
-      throw new BackendConnectionError('Unknown error', this.type);
-    }
-  }
-
-  /**
    * 连接到 GitHub（验证 Token）
    */
   async connect(): Promise<boolean> {
     try {
-      const response = await this.request<GitHubUserResponse>('GET', '/user');
+      const response = await this.fetchWithRetry<GitHubUserResponse>(
+        'GET',
+        `${GITHUB_API_BASE}/user`
+      );
 
       if (response.status === 401) {
         throw new BackendAuthError('Invalid GitHub token', this.type);
@@ -185,7 +138,10 @@ export class GistSyncBackend extends BaseSyncBackend {
    * 查找现有的配置 Gist
    */
   private async findExistingGist(): Promise<string | null> {
-    const response = await this.request<GistResponse[]>('GET', '/gists?per_page=100');
+    const response = await this.fetchWithRetry<GistResponse[]>(
+      'GET',
+      `${GITHUB_API_BASE}/gists?per_page=100`
+    );
 
     if (!response.ok || !response.data) {
       return null;
@@ -202,15 +158,21 @@ export class GistSyncBackend extends BaseSyncBackend {
    * 创建新的 Gist
    */
   private async createGist(): Promise<string> {
-    const response = await this.request<GistResponse>('POST', '/gists', {
-      description: GIST_DESCRIPTION,
-      public: false,
-      files: {
-        [GIST_FILENAME]: {
-          content: JSON.stringify({ initialized: true, deviceId: this.deviceId }),
-        },
-      },
-    });
+    const response = await this.fetchWithRetry<GistResponse>(
+      'POST',
+      `${GITHUB_API_BASE}/gists`,
+      {
+        body: JSON.stringify({
+          description: GIST_DESCRIPTION,
+          public: false,
+          files: {
+            [GIST_FILENAME]: {
+              content: JSON.stringify({ initialized: true, deviceId: this.deviceId }),
+            },
+          },
+        }),
+      }
+    );
 
     if (!response.ok || !response.data) {
       throw new BackendDataError('Failed to create Gist', this.type);
@@ -225,7 +187,10 @@ export class GistSyncBackend extends BaseSyncBackend {
   async getStatus(): Promise<ServerStatus> {
     try {
       const gistId = await this.ensureGist();
-      const response = await this.request<GistResponse>('GET', `/gists/${gistId}`);
+      const response = await this.fetchWithRetry<GistResponse>(
+        'GET',
+        `${GITHUB_API_BASE}/gists/${gistId}`
+      );
 
       if (response.status === 401) {
         throw new BackendAuthError('Invalid GitHub token', this.type);
@@ -267,7 +232,10 @@ export class GistSyncBackend extends BaseSyncBackend {
   async pull(): Promise<PullResult> {
     try {
       const gistId = await this.ensureGist();
-      const response = await this.request<GistResponse>('GET', `/gists/${gistId}`);
+      const response = await this.fetchWithRetry<GistResponse>(
+        'GET',
+        `${GITHUB_API_BASE}/gists/${gistId}`
+      );
 
       if (response.status === 401) {
         throw new BackendAuthError('Invalid GitHub token', this.type);
@@ -319,14 +287,20 @@ export class GistSyncBackend extends BaseSyncBackend {
     try {
       const gistId = await this.ensureGist();
 
-      const response = await this.request<GistResponse>('PATCH', `/gists/${gistId}`, {
-        description: GIST_DESCRIPTION,
-        files: {
-          [GIST_FILENAME]: {
-            content: JSON.stringify(data, null, 2),
-          },
-        },
-      });
+      const response = await this.fetchWithRetry<GistResponse>(
+        'PATCH',
+        `${GITHUB_API_BASE}/gists/${gistId}`,
+        {
+          body: JSON.stringify({
+            description: GIST_DESCRIPTION,
+            files: {
+              [GIST_FILENAME]: {
+                content: JSON.stringify(data, null, 2),
+              },
+            },
+          }),
+        }
+      );
 
       if (response.status === 401) {
         throw new BackendAuthError('Invalid GitHub token', this.type);

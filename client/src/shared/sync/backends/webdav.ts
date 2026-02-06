@@ -18,9 +18,6 @@ import {
   BackendDataError,
 } from './base';
 
-// 请求超时（毫秒）
-const REQUEST_TIMEOUT = 30000;
-
 // 配置文件名
 const CONFIG_FILENAME = 'api-key-switcher-config.json';
 
@@ -64,7 +61,7 @@ export class WebDAVSyncBackend extends BaseSyncBackend {
   /**
    * 获取认证头（Basic Auth）
    */
-  private get authHeaders(): Record<string, string> {
+  protected getRequestHeaders(): Record<string, string> {
     const credentials = Buffer.from(
       `${this.config.username}:${this.config.password}`
     ).toString('base64');
@@ -76,61 +73,18 @@ export class WebDAVSyncBackend extends BaseSyncBackend {
   }
 
   /**
-   * 发送 WebDAV 请求
-   */
-  private async request(
-    method: string,
-    url: string,
-    body?: string,
-    additionalHeaders?: Record<string, string>
-  ): Promise<{ ok: boolean; status: number; text?: string }> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-    try {
-      const headers = { ...this.authHeaders, ...additionalHeaders };
-
-      const response = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      let text: string | undefined;
-      try {
-        text = await response.text();
-      } catch {
-        // 忽略文本读取错误
-      }
-
-      return { ok: response.ok, status: response.status, text };
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw new BackendConnectionError('Request timeout', this.type);
-        }
-        throw new BackendConnectionError(error.message, this.type);
-      }
-      throw new BackendConnectionError('Unknown error', this.type);
-    }
-  }
-
-  /**
    * 连接到 WebDAV 服务器
    */
   async connect(): Promise<boolean> {
     try {
       // 使用 PROPFIND 检查连接和认证
-      const response = await this.request(
+      const response = await this.fetchWithRetry(
         'PROPFIND',
         this.baseUrl,
-        undefined,
-        { 'Depth': '0' }
+        {
+          parseJson: false,
+          headers: { 'Depth': '0' },
+        }
       );
 
       if (response.status === 401 || response.status === 403) {
@@ -171,16 +125,22 @@ export class WebDAVSyncBackend extends BaseSyncBackend {
       currentPath = `${currentPath}/${part}`;
 
       // 检查目录是否存在
-      const checkResponse = await this.request(
+      const checkResponse = await this.fetchWithRetry(
         'PROPFIND',
         currentPath,
-        undefined,
-        { 'Depth': '0' }
+        {
+          parseJson: false,
+          headers: { 'Depth': '0' },
+        }
       );
 
       if (checkResponse.status === 404) {
         // 创建目录
-        const mkcolResponse = await this.request('MKCOL', currentPath);
+        const mkcolResponse = await this.fetchWithRetry(
+          'MKCOL',
+          currentPath,
+          { parseJson: false }
+        );
 
         if (!mkcolResponse.ok && mkcolResponse.status !== 201 && mkcolResponse.status !== 405) {
           throw new BackendDataError(
@@ -198,11 +158,13 @@ export class WebDAVSyncBackend extends BaseSyncBackend {
   async getStatus(): Promise<ServerStatus> {
     try {
       // 检查配置文件是否存在
-      const response = await this.request(
+      const response = await this.fetchWithRetry(
         'PROPFIND',
         this.configFileUrl,
-        undefined,
-        { 'Depth': '0' }
+        {
+          parseJson: false,
+          headers: { 'Depth': '0' },
+        }
       );
 
       if (response.status === 401 || response.status === 403) {
@@ -241,7 +203,11 @@ export class WebDAVSyncBackend extends BaseSyncBackend {
    */
   async pull(): Promise<PullResult> {
     try {
-      const response = await this.request('GET', this.configFileUrl);
+      const response = await this.fetchWithRetry(
+        'GET',
+        this.configFileUrl,
+        { parseJson: false }
+      );
 
       if (response.status === 401 || response.status === 403) {
         throw new BackendAuthError('Invalid WebDAV credentials', this.type);
@@ -295,7 +261,14 @@ export class WebDAVSyncBackend extends BaseSyncBackend {
     try {
       const content = JSON.stringify(data, null, 2);
 
-      const response = await this.request('PUT', this.configFileUrl, content);
+      const response = await this.fetchWithRetry(
+        'PUT',
+        this.configFileUrl,
+        {
+          body: content,
+          parseJson: false,
+        }
+      );
 
       if (response.status === 401 || response.status === 403) {
         throw new BackendAuthError('Invalid WebDAV credentials', this.type);
