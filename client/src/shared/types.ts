@@ -7,6 +7,12 @@ export interface ApiKey {
   updatedAt?: string;
   // 额外的环境变量（如 BASE_URL）
   extraEnvVars?: Record<string, string>;
+  // 使用统计
+  switchCount?: number;
+  lastUsedAt?: string;
+  totalUsageMs?: number;
+  // 过期设置
+  expiresAt?: string;
 }
 
 // 服务商配置
@@ -91,6 +97,10 @@ export const IPC_CHANNELS = {
   TOGGLE_KEY: 'key:toggle',
   SWITCH_KEY: 'key:switch',
   REORDER_KEYS: 'key:reorder',
+  VALIDATE_KEY: 'key:validate',
+  GET_KEY_STATS: 'key:get-stats',
+  SET_KEY_EXPIRY: 'key:set-expiry',
+  CLEAR_KEY_EXPIRY: 'key:clear-expiry',
 
   // 环境变量
   SET_ENV_VAR: 'env:set',
@@ -121,6 +131,18 @@ export interface ActualEnvStatus {
   envValue: string | null;           // 实际的环境变量值
   matchedAlias: string | null;       // 匹配到的配置 key 别名
   isManuallyModified: boolean;       // 是否被手动修改（环境变量值与所有配置都不匹配）
+}
+
+// Key 使用统计
+export interface KeyUsageStats {
+  alias: string;
+  provider: ProviderType;
+  switchCount: number;
+  lastUsedAt: string | null;
+  totalUsageMs: number;
+  expiresAt: string | null;
+  isExpired: boolean;
+  isExpiringSoon: boolean; // 7天内过期
 }
 
 // IPC 响应类型
