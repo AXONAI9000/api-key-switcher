@@ -110,8 +110,8 @@ const AppContent: React.FC = () => {
       const baseUrl = key.extraEnvVars ? Object.values(key.extraEnvVars)[0] : undefined;
       const response = await window.electronAPI.validateKey(selectedProvider, key.key, baseUrl);
       if (response.success && response.data) {
-        setValidationStatuses(prev => ({ ...prev, [alias]: response.data.status }));
-        if (response.data.valid) {
+        setValidationStatuses(prev => ({ ...prev, [alias]: response.data!.status }));
+        if (response.data!.valid) {
           showToast('success', `${alias}: Key 验证通过`);
         } else {
           showToast('error', `${alias}: ${response.data.error || 'Key 无效'}`);

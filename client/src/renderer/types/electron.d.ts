@@ -26,7 +26,7 @@ export interface ElectronAPI {
   updateKey: (
     provider: ProviderType,
     alias: string,
-    updates: Partial<Pick<ApiKey, 'alias' | 'key' | 'enabled'>>
+    updates: Partial<Pick<ApiKey, 'alias' | 'key' | 'enabled' | 'extraEnvVars'>>
   ) => Promise<IpcResponse<ApiKey>>;
   toggleKey: (
     provider: ProviderType,
