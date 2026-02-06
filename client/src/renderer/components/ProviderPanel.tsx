@@ -30,6 +30,9 @@ interface ProviderPanelProps {
   isSwitching: string | null;
   isToggling: string | null;
   isRemoving: string | null;
+  onValidateKey?: (alias: string) => void;
+  validationStatuses?: Record<string, string>;
+  keyStats?: Record<string, any>;
 }
 
 const ProviderPanel: React.FC<ProviderPanelProps> = ({
@@ -46,6 +49,9 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
   isSwitching,
   isToggling,
   isRemoving,
+  onValidateKey,
+  validationStatuses,
+  keyStats,
 }) => {
   const { keys, envVar } = providerConfig;
 
@@ -196,6 +202,9 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
                   isSwitching={isSwitching === key.alias}
                   isToggling={isToggling === key.alias}
                   isRemoving={isRemoving === key.alias}
+                  onValidate={onValidateKey ? () => onValidateKey(key.alias) : undefined}
+                  validationStatus={validationStatuses?.[key.alias]}
+                  stats={keyStats?.[key.alias]}
                 />
               ))}
             </div>

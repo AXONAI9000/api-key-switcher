@@ -11,6 +11,7 @@ import {
   DEFAULT_PROVIDERS,
 } from './types';
 import { getConfigCache } from './config-cache';
+import { recordSwitch } from './usage-tracker';
 
 // 配置文件路径
 const CONFIG_DIR = path.join(os.homedir(), '.api-key-switcher');
@@ -575,6 +576,13 @@ export function switchKeyAndApply(provider: ProviderType, alias: string): {
   // 更新配置
   config.providers[provider].currentKey = alias;
   saveConfig(config);
+
+  // 记录切换统计
+  try {
+    recordSwitch(provider, alias);
+  } catch (e) {
+    // 统计记录失败不影响主流程
+  }
 
   // 收集所有需要设置的环境变量
   const appliedVars: Record<string, string> = {

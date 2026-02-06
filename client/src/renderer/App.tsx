@@ -68,6 +68,10 @@ const AppContent: React.FC = () => {
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+  // Validation and stats state
+  const [validationStatuses, setValidationStatuses] = useState<Record<string, string>>({});
+  const [keyStats, setKeyStats] = useState<Record<string, any>>({});
+
   // 加载实际环境变量状态
   const loadActualEnvStatus = useCallback(async (provider: ProviderType) => {
     try {
@@ -79,6 +83,45 @@ const AppContent: React.FC = () => {
       console.error('Failed to load actual env status:', err);
     }
   }, []);
+
+  // 加载 Key 统计信息
+  const loadKeyStats = useCallback(async (provider: ProviderType) => {
+    try {
+      const response = await window.electronAPI.getKeyStats(provider);
+      if (response.success && response.data) {
+        const statsMap: Record<string, any> = {};
+        for (const stat of response.data) {
+          statsMap[stat.alias] = stat;
+        }
+        setKeyStats(statsMap);
+      }
+    } catch (err) {
+      console.error('Failed to load key stats:', err);
+    }
+  }, []);
+
+  // 验证 Key
+  const handleValidateKey = async (alias: string) => {
+    const key = config?.providers[selectedProvider].keys.find(k => k.alias === alias);
+    if (!key) return;
+
+    setValidationStatuses(prev => ({ ...prev, [alias]: 'validating' }));
+    try {
+      const baseUrl = key.extraEnvVars ? Object.values(key.extraEnvVars)[0] : undefined;
+      const response = await window.electronAPI.validateKey(selectedProvider, key.key, baseUrl);
+      if (response.success && response.data) {
+        setValidationStatuses(prev => ({ ...prev, [alias]: response.data.status }));
+        if (response.data.valid) {
+          showToast('success', `${alias}: Key 验证通过`);
+        } else {
+          showToast('error', `${alias}: ${response.data.error || 'Key 无效'}`);
+        }
+      }
+    } catch (err) {
+      setValidationStatuses(prev => ({ ...prev, [alias]: 'network_error' }));
+      showToast('error', `验证失败: ${(err as Error).message}`);
+    }
+  };
 
   // 加载配置
   const loadConfig = useCallback(async () => {
@@ -113,10 +156,11 @@ const AppContent: React.FC = () => {
     };
   }, [loadConfig, loadActualEnvStatus, selectedProvider]);
 
-  // 当选择的服务商变化时，加载对应的实际环境变量状态
+  // 当选择的服务商变化时，加载对应的实际环境变量状态和 Key 统计
   useEffect(() => {
     loadActualEnvStatus(selectedProvider);
-  }, [selectedProvider, loadActualEnvStatus]);
+    loadKeyStats(selectedProvider);
+  }, [selectedProvider, loadActualEnvStatus, loadKeyStats]);
 
   // 处理添加 Key
   const handleAddKey = async (key: string, alias: string, baseUrl?: string) => {
@@ -369,6 +413,9 @@ const AppContent: React.FC = () => {
             isSwitching={isSwitching}
             isToggling={isToggling}
             isRemoving={isRemoving}
+            onValidateKey={handleValidateKey}
+            validationStatuses={validationStatuses}
+            keyStats={keyStats}
           />
         )}
       </div>

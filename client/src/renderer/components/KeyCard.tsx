@@ -13,6 +13,15 @@ interface KeyCardProps {
   isSwitching?: boolean;
   isToggling?: boolean;
   isRemoving?: boolean;
+  onValidate?: () => void;
+  validationStatus?: string; // 'idle' | 'validating' | 'valid' | 'invalid' | 'rate_limited' | 'network_error' | 'skipped'
+  stats?: {
+    switchCount: number;
+    lastUsedAt: string | null;
+    expiresAt: string | null;
+    isExpired: boolean;
+    isExpiringSoon: boolean;
+  };
 }
 
 // 遮蔽 Key 显示
@@ -41,6 +50,9 @@ const KeyCard: React.FC<KeyCardProps> = ({
   isSwitching = false,
   isToggling = false,
   isRemoving = false,
+  onValidate,
+  validationStatus,
+  stats,
 }) => {
   const [showKey, setShowKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
@@ -234,6 +246,27 @@ const KeyCard: React.FC<KeyCardProps> = ({
                 {new Date(createdAt).toLocaleDateString('zh-CN')}
               </span>
             </div>
+
+            {/* 使用统计和过期状态 */}
+            {stats && (
+              <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 dark:text-slate-500">
+                {stats.switchCount > 0 && (
+                  <span>切换 {stats.switchCount} 次</span>
+                )}
+                {stats.lastUsedAt && (
+                  <span>最后使用: {new Date(stats.lastUsedAt).toLocaleDateString()}</span>
+                )}
+                {stats.isExpired && (
+                  <span className="text-red-500 font-medium">已过期</span>
+                )}
+                {stats.isExpiringSoon && !stats.isExpired && (
+                  <span className="text-yellow-500 font-medium">即将过期</span>
+                )}
+                {stats.expiresAt && !stats.isExpired && !stats.isExpiringSoon && (
+                  <span>过期: {new Date(stats.expiresAt).toLocaleDateString()}</span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 操作按钮区 */}
@@ -259,6 +292,37 @@ const KeyCard: React.FC<KeyCardProps> = ({
             >
               {isToggling ? <Spinner /> : (enabled ? '禁用' : '启用')}
             </button>
+
+            {onValidate && (
+              <button
+                onClick={onValidate}
+                disabled={validationStatus === 'validating'}
+                className={`p-1.5 rounded-md transition-colors ${
+                  validationStatus === 'valid'
+                    ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'
+                    : validationStatus === 'invalid'
+                    ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+                title={
+                  validationStatus === 'valid' ? 'Key 有效' :
+                  validationStatus === 'invalid' ? 'Key 无效' :
+                  validationStatus === 'validating' ? '验证中...' :
+                  '验证 Key'
+                }
+              >
+                {validationStatus === 'validating' ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                )}
+              </button>
+            )}
 
             <button
               onClick={onEdit}

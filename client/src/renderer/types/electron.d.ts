@@ -1,4 +1,4 @@
-import { ProviderType, ApiKey, AppConfig, IpcResponse, ActualEnvStatus } from '../../shared/types';
+import { ProviderType, ApiKey, AppConfig, IpcResponse, ActualEnvStatus, KeyUsageStats } from '../../shared/types';
 import type {
   SyncConfig,
   SyncResult,
@@ -37,6 +37,14 @@ export interface ElectronAPI {
     provider: ProviderType,
     aliases: string[]
   ) => Promise<IpcResponse<ApiKey[]>>;
+  validateKey: (
+    provider: ProviderType,
+    key: string,
+    baseUrl?: string
+  ) => Promise<IpcResponse<{ valid: boolean; status: string; error?: string }>>;
+  getKeyStats: (
+    provider: ProviderType
+  ) => Promise<IpcResponse<KeyUsageStats[]>>;
 
   // 环境变量
   getCurrentEnv: (
