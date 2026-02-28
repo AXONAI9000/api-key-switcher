@@ -60,6 +60,10 @@ const AppContent: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Claude Code 更新状态
+  const [isUpdatingClaude, setIsUpdatingClaude] = useState(false);
+  const [claudeVersion, setClaudeVersion] = useState<string | null>(null);
+
   // Confirm modal state
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -141,9 +145,44 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  // 获取 Claude Code 版本
+  const loadClaudeVersion = useCallback(async () => {
+    try {
+      const response = await window.electronAPI.getClaudeVersion();
+      if (response.success && response.data) {
+        setClaudeVersion(response.data.version);
+      }
+    } catch {
+      // 忽略错误，版本显示为 null
+    }
+  }, []);
+
+  // 更新 Claude Code
+  const handleUpdateClaude = async () => {
+    setIsUpdatingClaude(true);
+    try {
+      const response = await window.electronAPI.updateClaudeCode();
+      if (response.success && response.data) {
+        if (response.data.needUpdate) {
+          showToast('success', `Claude Code 已更新: ${response.data.oldVersion} → ${response.data.newVersion}`);
+          setClaudeVersion(response.data.currentVersion);
+        } else {
+          showToast('info', `Claude Code 已是最新版本 (${response.data.currentVersion})`);
+        }
+      } else {
+        showToast('error', response.error || '更新失败');
+      }
+    } catch (err) {
+      showToast('error', `更新失败: ${(err as Error).message}`);
+    } finally {
+      setIsUpdatingClaude(false);
+    }
+  };
+
   // 初始加载
   useEffect(() => {
     loadConfig();
+    loadClaudeVersion();
 
     // 监听配置更新事件（来自托盘菜单操作）
     const unsubscribe = window.electronAPI.onConfigUpdated(() => {
@@ -154,7 +193,7 @@ const AppContent: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [loadConfig, loadActualEnvStatus, selectedProvider]);
+  }, [loadConfig, loadClaudeVersion, loadActualEnvStatus, selectedProvider]);
 
   // 当选择的服务商变化时，加载对应的实际环境变量状态和 Key 统计
   useEffect(() => {
@@ -416,6 +455,9 @@ const AppContent: React.FC = () => {
             onValidateKey={handleValidateKey}
             validationStatuses={validationStatuses}
             keyStats={keyStats}
+            onUpdateClaude={handleUpdateClaude}
+            isUpdatingClaude={isUpdatingClaude}
+            claudeVersion={claudeVersion}
           />
         )}
       </div>

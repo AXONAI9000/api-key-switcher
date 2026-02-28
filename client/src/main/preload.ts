@@ -95,4 +95,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeAllListeners(IPC_CHANNELS.SYNC_STATUS_CHANGED);
     };
   },
+
+  // Claude Code 更新
+  getClaudeVersion: () => ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_GET_VERSION),
+  updateClaudeCode: () => ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_UPDATE),
 });

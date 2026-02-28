@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -33,6 +33,9 @@ interface ProviderPanelProps {
   onValidateKey?: (alias: string) => void;
   validationStatuses?: Record<string, string>;
   keyStats?: Record<string, any>;
+  onUpdateClaude?: () => void;
+  isUpdatingClaude?: boolean;
+  claudeVersion?: string | null;
 }
 
 const ProviderPanel: React.FC<ProviderPanelProps> = ({
@@ -52,6 +55,9 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
   onValidateKey,
   validationStatuses,
   keyStats,
+  onUpdateClaude,
+  isUpdatingClaude,
+  claudeVersion,
 }) => {
   const { keys, envVar } = providerConfig;
 
@@ -210,6 +216,35 @@ const ProviderPanel: React.FC<ProviderPanelProps> = ({
             </div>
           </SortableContext>
         </DndContext>
+      )}
+
+      {/* Claude Code 更新区块 */}
+      {provider === 'claude' && (
+        <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-violet-700 dark:text-violet-300">
+                🔄 Claude Code 工具更新
+              </h4>
+              <p className="text-sm text-violet-600 dark:text-violet-400 mt-1">
+                {claudeVersion ? `当前版本: ${claudeVersion}` : '版本获取中...'}
+              </p>
+            </div>
+            <button
+              onClick={onUpdateClaude}
+              disabled={isUpdatingClaude}
+              className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+            >
+              {isUpdatingClaude && (
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              )}
+              {isUpdatingClaude ? '更新中...' : '检查更新'}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* 使用提示 */}

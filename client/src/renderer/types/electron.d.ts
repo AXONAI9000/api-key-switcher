@@ -100,6 +100,10 @@ export interface ElectronAPI {
 
   // 监听同步状态变更
   onSyncStatusChange: (callback: (event: SyncStatusChangeEvent) => void) => () => void;
+
+  // Claude Code 更新
+  getClaudeVersion: () => Promise<IpcResponse<{ version: string }>>;
+  updateClaudeCode: () => Promise<IpcResponse<{ needUpdate: boolean; currentVersion: string; oldVersion?: string; newVersion?: string }>>;
 }
 
 declare global {

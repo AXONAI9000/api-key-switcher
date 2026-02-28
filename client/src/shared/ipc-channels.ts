@@ -43,4 +43,8 @@ export const IPC_CHANNELS = {
   SYNC_SET_MASTER_PASSWORD: 'sync:set-master-password',
   SYNC_VERIFY_MASTER_PASSWORD: 'sync:verify-master-password',
   SYNC_STATUS_CHANGED: 'sync:status-changed',
+
+  // Claude Code 更新
+  CLAUDE_GET_VERSION: 'claude:get-version',
+  CLAUDE_UPDATE: 'claude:update',
 } as const;

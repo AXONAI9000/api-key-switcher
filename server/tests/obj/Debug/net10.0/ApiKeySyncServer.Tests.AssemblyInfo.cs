@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ApiKeySyncServer.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7f3ade6df5fc93f09d56e16b963050209f3b5824")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3c461cde4acd04c825fd398b00e504f3de93e83c")]
 [assembly: System.Reflection.AssemblyProductAttribute("ApiKeySyncServer.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ApiKeySyncServer.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

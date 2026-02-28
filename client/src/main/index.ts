@@ -68,6 +68,7 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
       preload: path.join(__dirname, 'preload.js'),
     },
     icon: getAssetPath('icon.png'),
@@ -724,6 +725,75 @@ function setupIpcHandlers(): void {
   // 初始化同步管理器
   syncManager.initialize().catch((error) => {
     console.error('Failed to initialize sync manager:', error);
+  });
+
+  // ========== Claude Code 更新相关 ==========
+
+  // 从 claude --version 输出中提取纯版本号（如 "2.1.63 (Claude Code)" → "2.1.63"）
+  const extractVersion = (versionOutput: string): string => {
+    const match = versionOutput.match(/(\d+\.\d+\.\d+)/);
+    return match ? match[1] : versionOutput.trim();
+  };
+
+  // 获取 Claude Code 当前版本
+  ipcMain.handle(IPC_CHANNELS.CLAUDE_GET_VERSION, async (): Promise<IpcResponse<{ version: string }>> => {
+    try {
+      const { execSync } = require('child_process');
+      const raw = execSync('claude --version', { encoding: 'utf-8', timeout: 10000 }).trim();
+      return { success: true, data: { version: raw } };
+    } catch (error) {
+      return { success: false, error: '无法获取 Claude Code 版本，请确认已安装 Claude Code' };
+    }
+  });
+
+  // 检查并更新 Claude Code
+  ipcMain.handle(IPC_CHANNELS.CLAUDE_UPDATE, async (): Promise<IpcResponse<{ needUpdate: boolean; currentVersion: string; oldVersion?: string; newVersion?: string }>> => {
+    try {
+      const { execSync } = require('child_process');
+
+      // 获取本地版本
+      let localRaw: string;
+      try {
+        localRaw = execSync('claude --version', { encoding: 'utf-8', timeout: 10000 }).trim();
+      } catch {
+        return { success: false, error: '无法获取本地 Claude Code 版本，请确认已安装' };
+      }
+
+      // 获取远程最新版本
+      let remoteVersion: string;
+      try {
+        remoteVersion = execSync('npm view @anthropic-ai/claude-code version --registry=https://registry.npmmirror.com/', { encoding: 'utf-8', timeout: 30000 }).trim();
+      } catch {
+        return { success: false, error: '无法获取远程版本信息，请检查网络连接' };
+      }
+
+      // 提取纯版本号进行比较
+      const localVersion = extractVersion(localRaw);
+      const cleanRemote = remoteVersion.replace(/^v/, '');
+
+      if (localVersion === cleanRemote) {
+        return { success: true, data: { needUpdate: false, currentVersion: localRaw } };
+      }
+
+      // 执行更新
+      try {
+        execSync('npm install -g @anthropic-ai/claude-code --registry=https://registry.npmmirror.com/', { encoding: 'utf-8', timeout: 120000 });
+      } catch (installError) {
+        return { success: false, error: `更新失败: ${(installError as Error).message}` };
+      }
+
+      // 获取更新后的版本
+      let newRaw: string;
+      try {
+        newRaw = execSync('claude --version', { encoding: 'utf-8', timeout: 10000 }).trim();
+      } catch {
+        newRaw = remoteVersion;
+      }
+
+      return { success: true, data: { needUpdate: true, oldVersion: localRaw, newVersion: newRaw, currentVersion: newRaw } };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
   });
 }
 
